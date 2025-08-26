@@ -460,7 +460,16 @@ export default function AdminPage() {
               <div className="barbers-section">
                 <div className="section-header">
                   <h2>Manage Barbers</h2>
-                  <button onClick={addProvider} className="add-button">+ Add Barber</button>
+                  <div className="header-actions">
+                    <button onClick={addProvider} className="add-button">+ Add Barber</button>
+                    <button 
+                      onClick={saveData} 
+                      className="save-button-inline"
+                      disabled={state.isSaving}
+                    >
+                      {state.isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
                 </div>
                 
                 {state.providers.map((provider, index) => (
@@ -545,7 +554,16 @@ export default function AdminPage() {
               <div className="services-section">
                 <div className="section-header">
                   <h2>Manage Services</h2>
-                  <button onClick={addService} className="add-button">+ Add Service</button>
+                  <div className="header-actions">
+                    <button onClick={addService} className="add-button">+ Add Service</button>
+                    <button 
+                      onClick={saveData} 
+                      className="save-button-inline"
+                      disabled={state.isSaving}
+                    >
+                      {state.isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="service-table-header">
@@ -632,13 +650,22 @@ export default function AdminPage() {
               <div className="schedule-section">
                 <div className="section-header">
                   <h2>Business Hours</h2>
-                  <button 
-                    onClick={loadBusinessHours}
-                    className="add-button"
-                    disabled={state.isSaving}
-                  >
-                    {state.isSaving ? 'Loading...' : 'Sync from SimplyBook'}
-                  </button>
+                  <div className="header-actions">
+                    <button 
+                      onClick={loadBusinessHours}
+                      className="add-button"
+                      disabled={state.isSaving}
+                    >
+                      {state.isSaving ? 'Loading...' : 'Sync from SimplyBook'}
+                    </button>
+                    <button 
+                      onClick={saveBusinessHours} 
+                      className="save-button-inline"
+                      disabled={state.isSaving}
+                    >
+                      {state.isSaving ? 'Saving...' : 'Save Hours'}
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="business-hours-container">
@@ -740,30 +767,6 @@ export default function AdminPage() {
         )}
       </div>
 
-      {/* Only show save button on tabs with editable data */}
-      {(state.activeTab === 'barbers' || state.activeTab === 'services') && (
-        <div className="admin-actions">
-          <button 
-            onClick={saveData} 
-            className="save-button"
-            disabled={state.isSaving}
-          >
-            {state.isSaving ? 'Saving...' : 'Save All Changes'}
-          </button>
-        </div>
-      )}
-      
-      {state.activeTab === 'schedule' && (
-        <div className="admin-actions">
-          <button 
-            onClick={saveBusinessHours} 
-            className="save-button"
-            disabled={state.isSaving}
-          >
-            {state.isSaving ? 'Saving...' : 'Update Business Hours'}
-          </button>
-        </div>
-      )}
 
       <style jsx>{`
         .admin-dashboard {
@@ -862,6 +865,12 @@ export default function AdminPage() {
           margin: 0;
         }
         
+        .header-actions {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+        
         .add-button {
           padding: 8px 16px;
           background: #4caf50;
@@ -870,6 +879,26 @@ export default function AdminPage() {
           border-radius: 4px;
           cursor: pointer;
           font-weight: 600;
+        }
+        
+        .save-button-inline {
+          padding: 8px 20px;
+          background: #2196f3;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: background 0.2s;
+        }
+        
+        .save-button-inline:hover:not(:disabled) {
+          background: #1976d2;
+        }
+        
+        .save-button-inline:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
         
         .barber-card {
@@ -1190,29 +1219,6 @@ export default function AdminPage() {
           font-style: italic;
         }
         
-        .admin-actions {
-          position: sticky;
-          bottom: 20px;
-          text-align: center;
-          margin-top: 30px;
-        }
-        
-        .save-button {
-          padding: 15px 40px;
-          background: #4caf50;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          font-size: 18px;
-          font-weight: 600;
-          cursor: pointer;
-          box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-        }
-        
-        .save-button:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
         
         .loading {
           text-align: center;
@@ -1343,6 +1349,17 @@ export default function AdminPage() {
         
         /* Mobile responsive */
         @media (max-width: 768px) {
+          .header-actions {
+            flex-direction: column;
+            width: 100%;
+            gap: 8px;
+          }
+          
+          .save-button-inline,
+          .add-button {
+            width: 100%;
+          }
+          
           .business-hours-container {
             grid-template-columns: 1fr;
             gap: 15px;
