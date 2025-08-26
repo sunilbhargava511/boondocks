@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { Provider, Service } from '@/lib/types';
 import { loadProviders, loadServices } from '@/lib/data';
+import CustomerManagement from '@/components/CustomerManagement';
 
 interface AdminState {
   isAuthenticated: boolean;
-  activeTab: 'barbers' | 'services' | 'schedule';
+  activeTab: 'barbers' | 'services' | 'schedule' | 'customers';
   providers: Provider[];
   services: Service[];
   businessHours: { [day: string]: { start: string; end: string; isOpen: boolean } };
@@ -443,6 +444,12 @@ export default function AdminPage() {
         >
           Schedule
         </button>
+        <button
+          className={`tab ${state.activeTab === 'customers' ? 'active' : ''}`}
+          onClick={() => setState(prev => ({ ...prev, activeTab: 'customers' }))}
+        >
+          Customers
+        </button>
       </div>
 
       {state.message.text && (
@@ -761,6 +768,12 @@ export default function AdminPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {state.activeTab === 'customers' && (
+              <div className="customers-section">
+                <CustomerManagement />
               </div>
             )}
           </>

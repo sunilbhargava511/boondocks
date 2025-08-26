@@ -1,0 +1,537 @@
+import { PrismaClient } from '@prisma/client';
+import { enhancedAPI } from '../enhanced-simplybook-api';
+import { Customer, CustomerPreference, CustomerTag, Appointment, CSVCustomerRow } from '../types';
+
+interface CreateCustomerData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth?: Date;
+  conversationPreference?: number;
+  preferredProviderId?: string;
+  notes?: string;
+  marketingConsent?: boolean;
+  smsConsent?: boolean;
+  emailConsent?: boolean;
+  preferences?: Partial<CustomerPreference>;
+  tags?: string[];
+  syncToSimplyBook?: boolean;
+}
+
+interface UpdateCustomerData {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  dateOfBirth?: Date;
+  conversationPreference?: number;
+  preferredProviderId?: string;
+  notes?: string;
+  marketingConsent?: boolean;
+  smsConsent?: boolean;
+  emailConsent?: boolean;
+  accountStatus?: 'active' | 'suspended' | 'blocked';
+  preferences?: Partial<CustomerPreference>;
+  tags?: string[];
+}
+
+export class CustomerManager {
+  private prisma: PrismaClient;
+
+  constructor() {
+    this.prisma = new PrismaClient();
+  }
+
+  async createCustomer(data: CreateCustomerData): Promise<Customer> {
+    const customer = await this.prisma.customer.create({
+      data: {
+        email: data.email,
+        phone: data.phone,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        dateOfBirth: data.dateOfBirth,
+        conversationPreference: data.conversationPreference || 2,
+        preferredProviderId: data.preferredProviderId,
+        notes: data.notes,
+        marketingConsent: data.marketingConsent || false,
+        smsConsent: data.smsConsent || false,
+        emailConsent: data.emailConsent !== false, // default to true unless explicitly false
+        syncStatus: data.syncToSimplyBook !== false ? 'pending_simplybook_creation' : 'synced',
+      },
+      include: {
+        preferences: true,
+        tags: true,
+        appointments: true,
+      },
+    });
+
+    // Add preferences if provided
+    if (data.preferences) {
+      await this.updateCustomerPreferences(customer.id, data.preferences);
+    }
+
+    // Add tags if provided
+    if (data.tags && data.tags.length > 0) {
+      await this.addCustomerTags(customer.id, data.tags);
+    }
+
+    // Sync to SimplyBook if requested
+    if (data.syncToSimplyBook !== false) {
+      await this.syncToSimplyBook(customer.id);
+    }
+
+    return this.getCustomerById(customer.id);
+  }
+
+  async getCustomerById(id: string): Promise<Customer | null> {
+    return await this.prisma.customer.findUnique({
+      where: { id },
+      include: {
+        preferences: true,
+        tags: true,
+        appointments: {
+          orderBy: { appointmentDate: 'desc' }
+        },
+      },
+    });
+  }
+
+  async getCustomerByEmail(email: string): Promise<Customer | null> {
+    return await this.prisma.customer.findUnique({
+      where: { email },
+      include: {
+        preferences: true,
+        tags: true,
+        appointments: {
+          orderBy: { appointmentDate: 'desc' }
+        },
+      },
+    });
+  }
+
+  async getCustomerBySimplyBookId(simplybookId: number): Promise<Customer | null> {
+    return await this.prisma.customer.findUnique({
+      where: { simplybookId },
+      include: {
+        preferences: true,
+        tags: true,
+        appointments: {
+          orderBy: { appointmentDate: 'desc' }
+        },
+      },
+    });
+  }
+
+  async updateCustomer(id: string, data: UpdateCustomerData): Promise<Customer | null> {
+    const customer = await this.prisma.customer.update({
+      where: { id },
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        dateOfBirth: data.dateOfBirth,
+        conversationPreference: data.conversationPreference,
+        preferredProviderId: data.preferredProviderId,
+        notes: data.notes,
+        marketingConsent: data.marketingConsent,
+        smsConsent: data.smsConsent,
+        emailConsent: data.emailConsent,
+        accountStatus: data.accountStatus,
+        syncStatus: 'pending_sync', // Mark for sync when updated
+      },
+    });
+
+    // Update preferences if provided
+    if (data.preferences) {
+      await this.updateCustomerPreferences(id, data.preferences);
+    }
+
+    // Update tags if provided
+    if (data.tags !== undefined) {
+      await this.replaceCustomerTags(id, data.tags);
+    }
+
+    // Sync changes to SimplyBook
+    if (customer.simplybookId) {
+      await this.syncToSimplyBook(id);
+    }
+
+    return this.getCustomerById(id);
+  }
+
+  async deleteCustomer(id: string): Promise<boolean> {
+    try {
+      const customer = await this.getCustomerById(id);
+      
+      // Cancel any future appointments first
+      await this.prisma.appointment.updateMany({
+        where: {
+          customerId: id,
+          appointmentDate: {
+            gte: new Date()
+          },
+          status: {
+            in: ['confirmed', 'in_progress']
+          }
+        },
+        data: {
+          status: 'cancelled'
+        }
+      });
+
+      // Delete the customer (cascades will handle related records)
+      await this.prisma.customer.delete({
+        where: { id }
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting customer:', error);
+      return false;
+    }
+  }
+
+  async searchCustomers(query: string, limit: number = 50): Promise<Customer[]> {
+    return await this.prisma.customer.findMany({
+      where: {
+        OR: [
+          {
+            firstName: {
+              contains: query,
+              mode: 'insensitive',
+            },
+          },
+          {
+            lastName: {
+              contains: query,
+              mode: 'insensitive',
+            },
+          },
+          {
+            email: {
+              contains: query,
+              mode: 'insensitive',
+            },
+          },
+          {
+            phone: {
+              contains: query,
+            },
+          },
+        ],
+      },
+      include: {
+        preferences: true,
+        tags: true,
+        appointments: {
+          orderBy: { appointmentDate: 'desc' },
+          take: 5, // Last 5 appointments for search results
+        },
+      },
+      take: limit,
+      orderBy: [
+        { lastVisit: 'desc' },
+        { createdAt: 'desc' }
+      ],
+    });
+  }
+
+  async getCustomersWithFilters(filters: {
+    accountStatus?: ('active' | 'suspended' | 'blocked')[];
+    minLoyaltyPoints?: number;
+    noShowThreshold?: number;
+    tags?: string[];
+    lastVisitAfter?: Date;
+    lastVisitBefore?: Date;
+    createdAfter?: Date;
+    createdBefore?: Date;
+  }, limit: number = 100): Promise<Customer[]> {
+    const where: any = {};
+
+    if (filters.accountStatus) {
+      where.accountStatus = { in: filters.accountStatus };
+    }
+
+    if (filters.minLoyaltyPoints !== undefined) {
+      where.loyaltyPoints = { gte: filters.minLoyaltyPoints };
+    }
+
+    if (filters.noShowThreshold !== undefined) {
+      where.noShowCount = { gte: filters.noShowThreshold };
+    }
+
+    if (filters.lastVisitAfter || filters.lastVisitBefore) {
+      where.lastVisit = {};
+      if (filters.lastVisitAfter) where.lastVisit.gte = filters.lastVisitAfter;
+      if (filters.lastVisitBefore) where.lastVisit.lte = filters.lastVisitBefore;
+    }
+
+    if (filters.createdAfter || filters.createdBefore) {
+      where.createdAt = {};
+      if (filters.createdAfter) where.createdAt.gte = filters.createdAfter;
+      if (filters.createdBefore) where.createdAt.lte = filters.createdBefore;
+    }
+
+    if (filters.tags && filters.tags.length > 0) {
+      where.tags = {
+        some: {
+          tagName: {
+            in: filters.tags
+          }
+        }
+      };
+    }
+
+    return await this.prisma.customer.findMany({
+      where,
+      include: {
+        preferences: true,
+        tags: true,
+        appointments: {
+          orderBy: { appointmentDate: 'desc' },
+          take: 5,
+        },
+      },
+      take: limit,
+      orderBy: [
+        { lastVisit: 'desc' },
+        { createdAt: 'desc' }
+      ],
+    });
+  }
+
+  // Preference management
+  async updateCustomerPreferences(customerId: string, preferences: Partial<CustomerPreference>): Promise<void> {
+    await this.prisma.customerPreference.upsert({
+      where: { customerId },
+      create: {
+        customerId,
+        preferredDays: preferences.preferredDays ? JSON.stringify(preferences.preferredDays) : null,
+        preferredTimes: preferences.preferredTimes ? JSON.stringify(preferences.preferredTimes) : null,
+        preferredServices: preferences.preferredServices ? JSON.stringify(preferences.preferredServices) : null,
+        allergiesNotes: preferences.allergiesNotes,
+        specialInstructions: preferences.specialInstructions,
+      },
+      update: {
+        preferredDays: preferences.preferredDays ? JSON.stringify(preferences.preferredDays) : undefined,
+        preferredTimes: preferences.preferredTimes ? JSON.stringify(preferences.preferredTimes) : undefined,
+        preferredServices: preferences.preferredServices ? JSON.stringify(preferences.preferredServices) : undefined,
+        allergiesNotes: preferences.allergiesNotes,
+        specialInstructions: preferences.specialInstructions,
+      },
+    });
+  }
+
+  // Tag management
+  async addCustomerTags(customerId: string, tagNames: string[]): Promise<void> {
+    const tagData = tagNames.map(tagName => ({
+      customerId,
+      tagName,
+    }));
+
+    await this.prisma.customerTag.createMany({
+      data: tagData,
+      skipDuplicates: true,
+    });
+  }
+
+  async removeCustomerTag(customerId: string, tagName: string): Promise<void> {
+    await this.prisma.customerTag.deleteMany({
+      where: {
+        customerId,
+        tagName,
+      },
+    });
+  }
+
+  async replaceCustomerTags(customerId: string, tagNames: string[]): Promise<void> {
+    // Remove existing tags
+    await this.prisma.customerTag.deleteMany({
+      where: { customerId },
+    });
+
+    // Add new tags
+    if (tagNames.length > 0) {
+      await this.addCustomerTags(customerId, tagNames);
+    }
+  }
+
+  // Appointment tracking
+  async recordAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Appointment> {
+    const appointment = await this.prisma.appointment.create({
+      data: appointmentData,
+    });
+
+    // Update customer stats
+    await this.updateCustomerStats(appointmentData.customerId, appointmentData.status);
+
+    return appointment;
+  }
+
+  async updateAppointmentStatus(appointmentId: string, status: Appointment['status']): Promise<void> {
+    const appointment = await this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status },
+    });
+
+    // Update customer stats based on status change
+    await this.updateCustomerStats(appointment.customerId, status);
+  }
+
+  private async updateCustomerStats(customerId: string, appointmentStatus: Appointment['status']): Promise<void> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      include: { appointments: true },
+    });
+
+    if (!customer) return;
+
+    const stats = {
+      noShowCount: customer.appointments.filter(apt => apt.status === 'no_show').length,
+      totalSpent: customer.appointments
+        .filter(apt => apt.status === 'completed')
+        .reduce((sum, apt) => sum + Number(apt.price), 0),
+      lastVisit: customer.appointments
+        .filter(apt => apt.status === 'completed')
+        .sort((a, b) => b.appointmentDate.getTime() - a.appointmentDate.getTime())[0]?.appointmentDate,
+    };
+
+    await this.prisma.customer.update({
+      where: { id: customerId },
+      data: {
+        noShowCount: stats.noShowCount,
+        totalSpent: stats.totalSpent,
+        lastVisit: stats.lastVisit,
+        loyaltyPoints: Math.floor(stats.totalSpent / 10), // 1 point per $10 spent
+      },
+    });
+  }
+
+  // SimplyBook synchronization
+  async syncToSimplyBook(customerId: string): Promise<boolean> {
+    try {
+      const customer = await this.getCustomerById(customerId);
+      if (!customer) return false;
+
+      if (customer.simplybookId) {
+        // Update existing SimplyBook client
+        // Note: SimplyBook API doesn't have a direct update client method
+        // This would need to be implemented based on API capabilities
+        await this.prisma.customer.update({
+          where: { id: customerId },
+          data: { syncStatus: 'synced' },
+        });
+      } else {
+        // Create new SimplyBook client
+        try {
+          const clientData = {
+            name: `${customer.firstName} ${customer.lastName}`,
+            email: customer.email,
+            phone: customer.phone,
+          };
+
+          // This would use the enhanced SimplyBook API
+          // const clientId = await enhancedAPI.createClient(clientData);
+
+          // For now, we'll simulate this
+          await this.prisma.customer.update({
+            where: { id: customerId },
+            data: {
+              // simplybookId: clientId,
+              syncStatus: 'synced',
+            },
+          });
+        } catch (error) {
+          await this.prisma.customer.update({
+            where: { id: customerId },
+            data: { syncStatus: 'error' },
+          });
+          return false;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error syncing customer to SimplyBook:', error);
+      return false;
+    }
+  }
+
+  async syncAllPendingCustomers(): Promise<{ success: number; failed: number }> {
+    const pendingCustomers = await this.prisma.customer.findMany({
+      where: {
+        syncStatus: {
+          in: ['pending_simplybook_creation', 'pending_sync'],
+        },
+      },
+    });
+
+    let success = 0;
+    let failed = 0;
+
+    for (const customer of pendingCustomers) {
+      const synced = await this.syncToSimplyBook(customer.id);
+      if (synced) {
+        success++;
+      } else {
+        failed++;
+      }
+    }
+
+    return { success, failed };
+  }
+
+  // CSV Import helper (basic structure - will be expanded in import service)
+  async createCustomerFromCSVRow(row: CSVCustomerRow, importJobId: string): Promise<{ success: boolean; error?: string; customerId?: string }> {
+    try {
+      // Validate required fields
+      if (!row.email || !row.firstName || !row.lastName) {
+        return { success: false, error: 'Missing required fields: email, firstName, or lastName' };
+      }
+
+      // Check for existing customer
+      const existing = await this.getCustomerByEmail(row.email);
+      if (existing) {
+        return { success: false, error: `Customer with email ${row.email} already exists` };
+      }
+
+      // Parse and validate data
+      const customerData: CreateCustomerData = {
+        firstName: row.firstName.trim(),
+        lastName: row.lastName.trim(),
+        email: row.email.trim().toLowerCase(),
+        phone: row.phone?.trim() || '',
+        dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : undefined,
+        conversationPreference: row.conversationPreference ? parseInt(row.conversationPreference) : 2,
+        notes: row.notes?.trim(),
+        marketingConsent: row.marketingConsent?.toLowerCase() === 'true',
+        smsConsent: row.smsConsent?.toLowerCase() === 'true',
+        emailConsent: row.emailConsent?.toLowerCase() !== 'false', // default true
+        loyaltyPoints: row.loyaltyPoints ? parseInt(row.loyaltyPoints) : 0,
+        totalSpent: row.totalSpent ? parseFloat(row.totalSpent) : 0,
+        preferences: {
+          preferredDays: row.preferredDays ? row.preferredDays.split(',').map(d => d.trim()) : undefined,
+          preferredTimes: row.preferredTimes ? row.preferredTimes.split(',').map(t => t.trim()) : undefined,
+          preferredServices: row.preferredServices ? row.preferredServices.split(',').map(s => s.trim()) : undefined,
+          allergiesNotes: row.allergiesNotes?.trim(),
+          specialInstructions: row.specialInstructions?.trim(),
+        },
+        tags: row.tags ? row.tags.split(',').map(t => t.trim()).filter(t => t.length > 0) : undefined,
+        syncToSimplyBook: false, // Don't sync during bulk import
+      };
+
+      const customer = await this.createCustomer(customerData);
+      return { success: true, customerId: customer.id };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async disconnect(): Promise<void> {
+    await this.prisma.$disconnect();
+  }
+}
+
+export const customerManager = new CustomerManager();

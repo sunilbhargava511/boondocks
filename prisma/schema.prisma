@@ -1,0 +1,109 @@
+// Prisma schema file for Boondocks Barbershop customer management
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id                    String   @id @default(uuid())
+  simplybookId          Int?     @unique @map("simplybook_id")
+  email                 String   @unique
+  phone                 String
+  firstName             String   @map("first_name")
+  lastName              String   @map("last_name")
+  dateOfBirth          DateTime? @map("date_of_birth")
+  conversationPreference Int     @default(2) @map("conversation_preference") // 0-3 scale
+  preferredProviderId   String?  @map("preferred_provider_id")
+  notes                 String?
+  loyaltyPoints        Int      @default(0) @map("loyalty_points")
+  totalSpent           Float    @default(0.00) @map("total_spent")
+  noShowCount          Int      @default(0) @map("no_show_count")
+  cancellationCount    Int      @default(0) @map("cancellation_count")
+  accountStatus        String   @default("active") @map("account_status") // active, suspended, blocked
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  lastVisit            DateTime? @map("last_visit")
+  marketingConsent     Boolean  @default(false) @map("marketing_consent")
+  smsConsent           Boolean  @default(false) @map("sms_consent")
+  emailConsent         Boolean  @default(true) @map("email_consent")
+  syncStatus           String   @default("synced") @map("sync_status") // synced, pending_simplybook_creation, pending_sync, error
+
+  // Relations
+  preferences CustomerPreference?
+  tags        CustomerTag[]
+  appointments Appointment[]
+
+  @@map("customers")
+}
+
+model CustomerPreference {
+  customerId          String   @id @map("customer_id")
+  preferredDays       Json?    @map("preferred_days") // ["monday", "tuesday"]
+  preferredTimes      Json?    @map("preferred_times") // ["morning", "afternoon"]
+  preferredServices   Json?    @map("preferred_services") // Array of service IDs
+  allergiesNotes      String?  @map("allergies_notes")
+  specialInstructions String?  @map("special_instructions")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  // Relations
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_preferences")
+}
+
+model CustomerTag {
+  id         String   @id @default(uuid())
+  customerId String   @map("customer_id")
+  tagName    String   @map("tag_name")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_tags")
+}
+
+model Appointment {
+  id               String   @id @default(uuid())
+  customerId       String   @map("customer_id")
+  simplybookId     Int?     @map("simplybook_id")
+  serviceId        String   @map("service_id")
+  serviceName      String   @map("service_name")
+  providerId       String   @map("provider_id")
+  providerName     String   @map("provider_name")
+  appointmentDate  DateTime @map("appointment_date")
+  duration         Int      // in minutes
+  price            Float
+  status           String   // confirmed, cancelled, completed, no_show, in_progress
+  bookingCode      String?  @map("booking_code")
+  notes            String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("appointments")
+}
+
+// Import/Export tracking
+model ImportJob {
+  id          String   @id @default(uuid())
+  fileName    String   @map("file_name")
+  status      String   // pending, processing, completed, failed
+  totalRows   Int      @map("total_rows")
+  processedRows Int    @default(0) @map("processed_rows")
+  successCount Int     @default(0) @map("success_count")
+  errorCount  Int      @default(0) @map("error_count")
+  errors      Json?    // Array of error messages
+  startedAt   DateTime @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdBy   String   @map("created_by") // Admin user identifier
+
+  @@map("import_jobs")
+}
