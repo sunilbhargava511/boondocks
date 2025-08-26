@@ -234,6 +234,7 @@ export default function BookingWidget() {
       <div className="header">
         <div className="logo">Boondocks</div>
         <div className="tagline">Traditional Barbershop • San Carlos</div>
+        <a href="/admin" className="admin-link" title="Admin Dashboard">⚙️</a>
       </div>
 
       <div className="booking-wrapper">
@@ -546,6 +547,29 @@ export default function BookingWidget() {
           text-align: center;
           position: relative;
           border-bottom: 5px solid #8b7355;
+        }
+
+        .admin-link {
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 50%;
+          text-decoration: none;
+          font-size: 16px;
+          transition: all 0.2s;
+          opacity: 0.5;
+        }
+
+        .admin-link:hover {
+          opacity: 1;
+          background: rgba(255, 255, 255, 0.2);
+          transform: rotate(90deg);
         }
 
         .header::before {
