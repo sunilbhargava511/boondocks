@@ -29,7 +29,15 @@ export class EnhancedSimplyBookAPI {
   private api: any;
 
   constructor() {
-    this.api = getSimplyBookAPI();
+    // Lazy initialization - don't get API during construction
+    this.api = null;
+  }
+
+  private getAPI() {
+    if (!this.api) {
+      this.api = getSimplyBookAPI();
+    }
+    return this.api;
   }
 
   // Real-time availability methods
@@ -39,10 +47,11 @@ export class EnhancedSimplyBookAPI {
     date: string
   ): Promise<TimeSlot[]> {
     try {
-      await this.api.getToken();
+      const api = this.getAPI();
+      await api.getToken();
       
       // Get available time intervals for the specific service and provider
-      const intervals = await this.api.client.call('getServiceAvailableTimeIntervals', [
+      const intervals = await api.client.call('getServiceAvailableTimeIntervals', [
         serviceId,
         providerId,
         date,
@@ -58,10 +67,10 @@ export class EnhancedSimplyBookAPI {
 
   async getRealProviders(): Promise<any[]> {
     try {
-      await this.api.getToken();
+      await this.getAPI().getToken();
       
       // Get real list of providers/barbers
-      const units = await this.api.client.call('getUnitList');
+      const units = await this.getAPI().client.call('getUnitList');
       
       return units.map((unit: any) => ({
         id: `provider_${unit.id}`,
@@ -80,9 +89,9 @@ export class EnhancedSimplyBookAPI {
 
   async getProviderWorkingHours(providerId: number): Promise<WorkingHours> {
     try {
-      await this.api.getToken();
+      await this.getAPI().getToken();
       
-      const workDays = await this.api.client.call('getUnitWorkdayInfo', [providerId]);
+      const workDays = await this.getAPI().client.call('getUnitWorkdayInfo', [providerId]);
       const workingHours: WorkingHours = {};
       
       // Convert SimplyBook format to our format
@@ -104,10 +113,10 @@ export class EnhancedSimplyBookAPI {
 
   async getRealServices(): Promise<any[]> {
     try {
-      await this.api.getToken();
+      await this.getAPI().getToken();
       
       // Get actual services from SimplyBook
-      const services = await this.api.client.call('getServiceList');
+      const services = await this.getAPI().client.call('getServiceList');
       
       return services.map((service: any) => ({
         id: `service_${service.id}`,
@@ -126,13 +135,13 @@ export class EnhancedSimplyBookAPI {
   // Booking management
   async createRealBooking(bookingData: BookingData): Promise<any> {
     try {
-      await this.api.getToken();
+      await this.getAPI().getToken();
       
       // Add client if they don't exist
       let clientId = bookingData.clientId;
       
       if (!clientId) {
-        clientId = await this.api.client.call('addClient', [{
+        clientId = await this.getAPI().client.call('addClient', [{
           name: bookingData.clientName,
           email: bookingData.clientEmail,
           phone: bookingData.clientPhone
@@ -140,7 +149,7 @@ export class EnhancedSimplyBookAPI {
       }
 
       // Create the booking
-      const booking = await this.api.client.call('book', [
+      const booking = await this.getAPI().client.call('book', [
         bookingData.serviceId,
         bookingData.providerId,
         clientId,
@@ -166,9 +175,9 @@ export class EnhancedSimplyBookAPI {
 
   async cancelRealBooking(bookingId: number): Promise<boolean> {
     try {
-      await this.api.getToken();
+      await this.getAPI().getToken();
       
-      const result = await this.api.client.call('cancelBooking', [bookingId]);
+      const result = await this.getAPI().client.call('cancelBooking', [bookingId]);
       return result.success || false;
     } catch (error) {
       console.error('Error canceling booking:', error);
@@ -179,9 +188,9 @@ export class EnhancedSimplyBookAPI {
   // Business intelligence
   async getBookingStats(startDate: string, endDate: string): Promise<any> {
     try {
-      await this.api.getToken();
+      await this.getAPI().getToken();
       
-      const stats = await this.api.client.call('getBookingStats', [
+      const stats = await this.getAPI().client.call('getBookingStats', [
         startDate,
         endDate
       ]);
@@ -201,9 +210,9 @@ export class EnhancedSimplyBookAPI {
 
   async getRecentBookings(limit: number = 10): Promise<any[]> {
     try {
-      await this.api.getToken();
+      await this.getAPI().getToken();
       
-      const bookings = await this.api.client.call('getBookings', [{
+      const bookings = await this.getAPI().client.call('getBookings', [{
         limit: limit,
         order: 'date_desc'
       }]);
@@ -226,7 +235,7 @@ export class EnhancedSimplyBookAPI {
   // Company management
   async updateProviderWorkingHours(providerId: number, workingHours: WorkingHours): Promise<boolean> {
     try {
-      await this.api.getToken();
+      await this.getAPI().getToken();
       
       // Convert our format to SimplyBook format
       const workDayInfo: any = {};
@@ -240,7 +249,7 @@ export class EnhancedSimplyBookAPI {
         };
       });
 
-      const result = await this.api.client.call('setWorkDayInfo', [
+      const result = await this.getAPI().client.call('setWorkDayInfo', [
         providerId,
         workDayInfo
       ]);
@@ -254,9 +263,9 @@ export class EnhancedSimplyBookAPI {
 
   async getCompanyDetails(): Promise<any> {
     try {
-      await this.api.getToken();
+      await this.getAPI().getToken();
       
-      const companyInfo = await this.api.client.call('getCompanyInfo');
+      const companyInfo = await this.getAPI().client.call('getCompanyInfo');
       
       return {
         name: companyInfo.name,

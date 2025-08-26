@@ -223,11 +223,21 @@ export class SimplyBookAPI {
 let apiInstance: SimplyBookAPI | null = null;
 
 export function getSimplyBookAPI(): SimplyBookAPI {
+  // Skip initialization during build phase
+  if (typeof window === 'undefined' && !process.env.NEXT_PUBLIC_SIMPLYBOOK_COMPANY_LOGIN) {
+    // Return a dummy instance during build
+    return {} as SimplyBookAPI;
+  }
+
   if (!apiInstance) {
     const companyLogin = process.env.NEXT_PUBLIC_SIMPLYBOOK_COMPANY_LOGIN;
-    const apiKey = process.env.SIMPLYBOOK_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_SIMPLYBOOK_API_KEY || process.env.SIMPLYBOOK_API_KEY;
 
     if (!companyLogin || !apiKey) {
+      // During build phase, return dummy instance
+      if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+        return {} as SimplyBookAPI;
+      }
       throw new Error('SimplyBook.me API credentials not configured');
     }
 
