@@ -71,7 +71,7 @@ export class SimplyBookAPI {
         url: 'https://user-api.simplybook.me',
         headers: {
           'X-Company-Login': this.companyLogin,
-          'X-Token': this.token
+          'X-Token': this.token || ''
         }
       });
 
