@@ -598,15 +598,18 @@ export default function AdminPage() {
         )}
       </div>
 
-      <div className="admin-actions">
-        <button 
-          onClick={saveData} 
-          className="save-button"
-          disabled={state.isSaving}
-        >
-          {state.isSaving ? 'Saving...' : 'Save All Changes'}
-        </button>
-      </div>
+      {/* Only show save button on tabs with editable data */}
+      {(state.activeTab === 'barbers' || state.activeTab === 'services') && (
+        <div className="admin-actions">
+          <button 
+            onClick={saveData} 
+            className="save-button"
+            disabled={state.isSaving}
+          >
+            {state.isSaving ? 'Saving...' : 'Save All Changes'}
+          </button>
+        </div>
+      )}
 
       <style jsx>{`
         .admin-dashboard {
