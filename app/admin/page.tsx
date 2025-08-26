@@ -402,6 +402,14 @@ export default function AdminPage() {
                   <button onClick={addService} className="add-button">+ Add Service</button>
                 </div>
                 
+                <div className="service-table-header">
+                  <span className="header-name">Service Name</span>
+                  <span className="header-duration">Duration</span>
+                  <span className="header-price">Price</span>
+                  <span className="header-category">Category</span>
+                  <span className="header-action"></span>
+                </div>
+                
                 {['Haircuts', 'Beards', 'Kids'].map(category => (
                   <div key={category} className="category-group">
                     <h3>{category}</h3>
@@ -419,24 +427,30 @@ export default function AdminPage() {
                                 className="service-name"
                                 placeholder="Service Name"
                               />
-                              <input
-                                type="number"
-                                value={service.duration}
-                                onChange={(e) => updateService(index, 'duration', parseInt(e.target.value))}
-                                className="service-duration"
-                                placeholder="Minutes"
-                                min="15"
-                                step="15"
-                              />
-                              <input
-                                type="number"
-                                value={service.price}
-                                onChange={(e) => updateService(index, 'price', parseFloat(e.target.value))}
-                                className="service-price"
-                                placeholder="Price"
-                                min="0"
-                                step="1"
-                              />
+                              <div className="input-with-label">
+                                <input
+                                  type="number"
+                                  value={service.duration}
+                                  onChange={(e) => updateService(index, 'duration', parseInt(e.target.value))}
+                                  className="service-duration"
+                                  placeholder="30"
+                                  min="15"
+                                  step="15"
+                                />
+                                <span className="input-label">min</span>
+                              </div>
+                              <div className="input-with-label">
+                                <span className="input-label">$</span>
+                                <input
+                                  type="number"
+                                  value={service.price}
+                                  onChange={(e) => updateService(index, 'price', parseFloat(e.target.value))}
+                                  className="service-price"
+                                  placeholder="0"
+                                  min="0"
+                                  step="1"
+                                />
+                              </div>
                               <select
                                 value={service.category}
                                 onChange={(e) => updateService(index, 'category', e.target.value)}
@@ -701,6 +715,44 @@ export default function AdminPage() {
           border-radius: 4px;
         }
         
+        .service-table-header {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          padding: 10px 12px;
+          background: #f0f0f0;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          margin-bottom: 20px;
+          font-weight: 600;
+          font-size: 13px;
+          text-transform: uppercase;
+          color: #666;
+          letter-spacing: 0.5px;
+        }
+        
+        .header-name {
+          flex: 2;
+        }
+        
+        .header-duration {
+          width: 96px;
+          text-align: center;
+        }
+        
+        .header-price {
+          width: 94px;
+          text-align: center;
+        }
+        
+        .header-category {
+          width: 120px;
+        }
+        
+        .header-action {
+          width: 30px;
+        }
+        
         .category-group {
           margin-bottom: 30px;
         }
@@ -733,11 +785,34 @@ export default function AdminPage() {
           border-radius: 4px;
         }
         
-        .service-duration, .service-price {
-          width: 80px;
-          padding: 6px;
+        .input-with-label {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          position: relative;
+        }
+        
+        .input-label {
+          font-weight: 600;
+          color: #666;
+          font-size: 14px;
+          flex-shrink: 0;
+        }
+        
+        .service-duration {
+          width: 60px;
+          padding: 6px 4px;
           border: 1px solid #ddd;
           border-radius: 4px;
+          text-align: center;
+        }
+        
+        .service-price {
+          width: 70px;
+          padding: 6px 4px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          text-align: right;
         }
         
         .category-select {
