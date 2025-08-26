@@ -1,0 +1,18 @@
+Provider Info,,,,,Jan,Dante X,Jenni Rich,Pedro Mora,Michelle Connolly,Anthony Cortez
+Description,,,,,I converse a lot which has caused appointments to run over time. Feel free to add a note with conversation levels (0-3).,Here Wednesday through Saturday.,,,Currently not accepting new clients or children's haircuts.,Barber apprentice since 2020. Habla espanol. IG: Monzta_cutz94
+Notes,,,,,Kids haircuts take 45 minutes,Cash only,,,Not accepting new clients,No kids under 6
+Category,Service Name,Duration (minutes),Description,Base Price,,,,,,
+Haircuts,"Low Taper Fade/""The Llama""/Teenager Cut",30,"Low Taper Fade, also known as 'The Llama' or the Teenager Cut, is a detailed style that demands skill and precision. Please bring reference pictures and clearly communicate desired length.",0,0,0,0,0,0,0
+Haircuts,Skin Fade,30,"For styles of skin or bald fades (0 guard or lower) regardless of the length of hair on top. Achieve a clean, sharp look that seamlessly blends the sides and back.",65,65,65,65,65,65,65
+Haircuts,Haircut,30,Specializing in short styles. Book transformation cut if hair is long or over 10 weeks since last visit. Not for bald fades.,60,60,60,60,60,60,60
+Haircuts,Senior Cut,30,"Personalized haircuts tailored for individuals aged 65 and older, ensuring a comfortable and enjoyable experience with priority on safety and ease of access.",50,50,50,50,50,50,50
+Haircuts,Transformation Cut,45,Designed for clients looking to make a significant change from longer hair to a much shorter style. Extra time and expertise for a flawless transition.,70,70,70,70,70,70,70
+Haircuts,ALL SCISSOR CUT,30,For clients of all ages who prefer a haircut without clippers on the sides and back. Hair must be washed prior to service.,70,70,70,70,70,70,70
+Haircuts,Cut n' Wash,40,The full experience with a haircut and shampoo.,70,70,70,70,70,70,70
+Haircuts,Buzz Cut,25,Uniform length throughout using the same clipper guard. Clean and low-maintenance style with no fading.,40,40,40,40,40,40,40
+Beards,Standard Beard Trim,15,Beard trim and line up with electric beard trimmers. No hot towel or straight razor.,40,40,40,40,40,40,40
+Beards,Deluxe Beard Trim,30,Beard trim and line up with hot towel service and straight razor shave.,55,55,55,55,55,55,55
+Beards,Traditional Straight Razor Shave,50,Experience the art of grooming with hot towel treatment and rich lather for a smooth finish with classic straight razor shave.,85,85,85,85,85,85,85
+Combination,Haircut and Beard Trim,45,Classic haircut combined with precise beard trim using beard trimmer machine. Clean and well-groomed look without hot towels or straight razors.,75,75,75,75,75,75,75
+Combination,Haircut and Straight Razor Shave,80,"Standard haircut complemented by straight razor shave, warm lather and hot towel. Leaves you looking sharp and feeling refreshed.",120,120,120,120,120,120,120
+Combination,Hair Cut and Deluxe Beard Trim,60,Haircut paired with deluxe beard trim including straight razor shave for clean finish on neck and cheeks. Includes hot towel and warm lather.,100,100,100,100,100,100,100
