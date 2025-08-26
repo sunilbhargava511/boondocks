@@ -193,6 +193,55 @@ export default function AdminPage() {
     }
   };
 
+  const syncWithSimplyBook = async () => {
+    setState(prev => ({ ...prev, isSaving: true }));
+    
+    try {
+      // Sync providers from SimplyBook
+      const providersResponse = await fetch('/api/admin/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'syncProviders' })
+      });
+
+      // Sync services from SimplyBook
+      const servicesResponse = await fetch('/api/admin/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'syncServices' })
+      });
+
+      if (providersResponse.ok && servicesResponse.ok) {
+        const providersData = await providersResponse.json();
+        const servicesData = await servicesResponse.json();
+        
+        if (providersData.success && servicesData.success) {
+          setState(prev => ({
+            ...prev,
+            providers: providersData.providers,
+            services: servicesData.services,
+            isSaving: false,
+            message: { type: 'success', text: 'Successfully synced with SimplyBook.me!' }
+          }));
+          
+          setTimeout(() => {
+            setState(prev => ({ ...prev, message: { type: '', text: '' } }));
+          }, 3000);
+        } else {
+          throw new Error('Sync failed');
+        }
+      } else {
+        throw new Error('Failed to connect to SimplyBook.me');
+      }
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        isSaving: false,
+        message: { type: 'error', text: 'Failed to sync with SimplyBook.me. Please check your API connection.' }
+      }));
+    }
+  };
+
   if (!state.isAuthenticated) {
     return (
       <div className="admin-login">
@@ -484,17 +533,64 @@ export default function AdminPage() {
 
             {state.activeTab === 'schedule' && (
               <div className="schedule-section">
-                <h2>Business Hours</h2>
-                <div className="schedule-info">
-                  <p>Business hours are managed through your SimplyBook.me account. To update business hours, please log in to your SimplyBook.me admin panel.</p>
-                  <a 
-                    href="https://boondocks.secure.simplybook.me" 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="simplybook-link"
+                <div className="section-header">
+                  <h2>Analytics & Insights</h2>
+                  <button 
+                    onClick={syncWithSimplyBook}
+                    className="add-button"
+                    disabled={state.isSaving}
                   >
-                    Go to SimplyBook.me Admin →
-                  </a>
+                    {state.isSaving ? 'Syncing...' : 'Sync with SimplyBook'}
+                  </button>
+                </div>
+                
+                <div className="analytics-grid">
+                  <div className="analytics-card">
+                    <h3>Recent Bookings</h3>
+                    <div className="recent-bookings">
+                      <p>Connect to SimplyBook.me to see recent bookings</p>
+                    </div>
+                  </div>
+                  
+                  <div className="analytics-card">
+                    <h3>Quick Stats</h3>
+                    <div className="quick-stats">
+                      <div className="stat-item">
+                        <span className="stat-label">Total Bookings (30 days)</span>
+                        <span className="stat-value">--</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">Revenue (30 days)</span>
+                        <span className="stat-value">--</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">Most Popular Service</span>
+                        <span className="stat-value">--</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="analytics-card">
+                    <h3>System Integration</h3>
+                    <div className="integration-status">
+                      <div className="status-item">
+                        <span className="status-label">SimplyBook.me API</span>
+                        <span className="status-indicator connected">Connected</span>
+                      </div>
+                      <div className="status-item">
+                        <span className="status-label">Data Sync</span>
+                        <span className="status-indicator">Manual</span>
+                      </div>
+                    </div>
+                    <a 
+                      href="https://boondocks.secure.simplybook.me" 
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="simplybook-link"
+                    >
+                      Open SimplyBook Admin →
+                    </a>
+                  </div>
                 </div>
               </div>
             )}
@@ -842,23 +938,99 @@ export default function AdminPage() {
         }
         
         .schedule-section {
-          text-align: center;
-          padding: 40px;
+          padding: 0;
         }
         
-        .schedule-info {
+        .analytics-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 20px;
           margin-top: 20px;
+        }
+        
+        .analytics-card {
+          background: #f9f9f9;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          padding: 20px;
+        }
+        
+        .analytics-card h3 {
+          font-family: 'Oswald', sans-serif;
+          color: #2c2c2c;
+          margin-bottom: 15px;
+          font-size: 18px;
+        }
+        
+        .quick-stats {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        
+        .stat-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 0;
+          border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .stat-label {
+          color: #666;
+          font-size: 14px;
+        }
+        
+        .stat-value {
+          font-weight: 600;
+          color: #2c2c2c;
+          font-size: 16px;
+        }
+        
+        .integration-status {
+          margin-bottom: 20px;
+        }
+        
+        .status-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+        }
+        
+        .status-label {
+          color: #666;
+          font-size: 14px;
+        }
+        
+        .status-indicator {
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 600;
+          background: #ffc107;
+          color: #856404;
+        }
+        
+        .status-indicator.connected {
+          background: #28a745;
+          color: white;
         }
         
         .simplybook-link {
           display: inline-block;
-          margin-top: 20px;
-          padding: 12px 24px;
+          padding: 10px 20px;
           background: #1e4d8b;
           color: white;
           text-decoration: none;
           border-radius: 4px;
           font-weight: 600;
+          font-size: 14px;
+        }
+        
+        .recent-bookings {
+          color: #666;
+          font-style: italic;
         }
         
         .admin-actions {
