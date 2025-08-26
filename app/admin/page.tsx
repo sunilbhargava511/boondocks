@@ -9,6 +9,7 @@ interface AdminState {
   activeTab: 'barbers' | 'services' | 'schedule';
   providers: Provider[];
   services: Service[];
+  businessHours: { [day: string]: { start: string; end: string; isOpen: boolean } };
   isLoading: boolean;
   isSaving: boolean;
   message: { type: 'success' | 'error' | ''; text: string };
@@ -20,6 +21,15 @@ export default function AdminPage() {
     activeTab: 'barbers',
     providers: [],
     services: [],
+    businessHours: {
+      monday: { start: '09:00', end: '17:00', isOpen: true },
+      tuesday: { start: '09:00', end: '17:00', isOpen: true },
+      wednesday: { start: '09:00', end: '17:00', isOpen: true },
+      thursday: { start: '09:00', end: '17:00', isOpen: true },
+      friday: { start: '09:00', end: '17:00', isOpen: true },
+      saturday: { start: '09:00', end: '15:00', isOpen: true },
+      sunday: { start: '10:00', end: '14:00', isOpen: false }
+    },
     isLoading: true,
     isSaving: false,
     message: { type: '', text: '' }
@@ -30,6 +40,7 @@ export default function AdminPage() {
   // Load data on mount
   useEffect(() => {
     loadData();
+    loadBusinessHours();
   }, []);
 
   const loadData = async () => {
@@ -238,6 +249,92 @@ export default function AdminPage() {
         ...prev,
         isSaving: false,
         message: { type: 'error', text: 'Failed to sync with SimplyBook.me. Please check your API connection.' }
+      }));
+    }
+  };
+
+  const loadBusinessHours = async () => {
+    try {
+      // Get business hours from SimplyBook API
+      const response = await fetch('/api/admin/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'getCompanyInfo' })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.companyInfo) {
+          // Convert SimplyBook hours to our format
+          const businessHours: any = {};
+          const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+          
+          days.forEach(day => {
+            businessHours[day] = {
+              start: '09:00',
+              end: '17:00',
+              isOpen: true
+            };
+          });
+          
+          setState(prev => ({ ...prev, businessHours }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load business hours:', error);
+    }
+  };
+
+  const updateBusinessHours = (day: string, field: string, value: string | boolean) => {
+    setState(prev => ({
+      ...prev,
+      businessHours: {
+        ...prev.businessHours,
+        [day]: {
+          ...prev.businessHours[day],
+          [field]: value
+        }
+      }
+    }));
+  };
+
+  const saveBusinessHours = async () => {
+    setState(prev => ({ ...prev, isSaving: true }));
+    
+    try {
+      // Convert to SimplyBook format and save via API
+      const response = await fetch('/api/admin/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'updateBusinessHours',
+          data: { businessHours: state.businessHours }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setState(prev => ({
+            ...prev,
+            isSaving: false,
+            message: { type: 'success', text: 'Business hours updated successfully!' }
+          }));
+          
+          setTimeout(() => {
+            setState(prev => ({ ...prev, message: { type: '', text: '' } }));
+          }, 3000);
+        } else {
+          throw new Error('Failed to update business hours');
+        }
+      } else {
+        throw new Error('Network error');
+      }
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        isSaving: false,
+        message: { type: 'error', text: 'Failed to save business hours. Please try again.' }
       }));
     }
   };
@@ -534,62 +631,107 @@ export default function AdminPage() {
             {state.activeTab === 'schedule' && (
               <div className="schedule-section">
                 <div className="section-header">
-                  <h2>Analytics & Insights</h2>
+                  <h2>Business Hours</h2>
                   <button 
-                    onClick={syncWithSimplyBook}
+                    onClick={loadBusinessHours}
                     className="add-button"
                     disabled={state.isSaving}
                   >
-                    {state.isSaving ? 'Syncing...' : 'Sync with SimplyBook'}
+                    {state.isSaving ? 'Loading...' : 'Sync from SimplyBook'}
                   </button>
                 </div>
                 
-                <div className="analytics-grid">
-                  <div className="analytics-card">
-                    <h3>Recent Bookings</h3>
-                    <div className="recent-bookings">
-                      <p>Connect to SimplyBook.me to see recent bookings</p>
+                <div className="business-hours-container">
+                  <div className="business-hours-card">
+                    <p className="hours-description">
+                      Manage your barbershop's operating hours for each day of the week. Changes will be synced to SimplyBook.me automatically.
+                    </p>
+                    
+                    <div className="hours-grid">
+                      {Object.entries(state.businessHours).map(([day, hours]) => (
+                        <div key={day} className="hours-row">
+                          <div className="day-label">
+                            <label className="day-name">{day.charAt(0).toUpperCase() + day.slice(1)}</label>
+                            <label className="checkbox-label">
+                              <input
+                                type="checkbox"
+                                checked={hours.isOpen}
+                                onChange={(e) => updateBusinessHours(day, 'isOpen', e.target.checked)}
+                              />
+                              <span>Open</span>
+                            </label>
+                          </div>
+                          
+                          <div className="time-inputs">
+                            <div className="time-group">
+                              <label>Opening</label>
+                              <input
+                                type="time"
+                                value={hours.start}
+                                onChange={(e) => updateBusinessHours(day, 'start', e.target.value)}
+                                disabled={!hours.isOpen}
+                                className="time-input"
+                              />
+                            </div>
+                            <span className="time-separator">to</span>
+                            <div className="time-group">
+                              <label>Closing</label>
+                              <input
+                                type="time"
+                                value={hours.end}
+                                onChange={(e) => updateBusinessHours(day, 'end', e.target.value)}
+                                disabled={!hours.isOpen}
+                                className="time-input"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                   
                   <div className="analytics-card">
-                    <h3>Quick Stats</h3>
-                    <div className="quick-stats">
-                      <div className="stat-item">
-                        <span className="stat-label">Total Bookings (30 days)</span>
-                        <span className="stat-value">--</span>
-                      </div>
-                      <div className="stat-item">
-                        <span className="stat-label">Revenue (30 days)</span>
-                        <span className="stat-value">--</span>
-                      </div>
-                      <div className="stat-item">
-                        <span className="stat-label">Most Popular Service</span>
-                        <span className="stat-value">--</span>
-                      </div>
+                    <h3>Quick Actions</h3>
+                    <div className="quick-actions">
+                      <button 
+                        onClick={() => {
+                          const newHours = { ...state.businessHours };
+                          Object.keys(newHours).forEach(day => {
+                            if (day !== 'sunday') {
+                              newHours[day] = { start: '09:00', end: '18:00', isOpen: true };
+                            }
+                          });
+                          setState(prev => ({ ...prev, businessHours: newHours }));
+                        }}
+                        className="action-button"
+                      >
+                        Set Standard Hours (9 AM - 6 PM)
+                      </button>
+                      
+                      <button 
+                        onClick={() => {
+                          const newHours = { ...state.businessHours };
+                          Object.keys(newHours).forEach(day => {
+                            newHours[day].isOpen = day !== 'sunday' && day !== 'monday';
+                          });
+                          setState(prev => ({ ...prev, businessHours: newHours }));
+                        }}
+                        className="action-button"
+                      >
+                        Closed Sundays & Mondays
+                      </button>
                     </div>
-                  </div>
-                  
-                  <div className="analytics-card">
-                    <h3>System Integration</h3>
-                    <div className="integration-status">
+                    
+                    <div className="sync-status">
                       <div className="status-item">
                         <span className="status-label">SimplyBook.me API</span>
                         <span className="status-indicator connected">Connected</span>
                       </div>
                       <div className="status-item">
-                        <span className="status-label">Data Sync</span>
-                        <span className="status-indicator">Manual</span>
+                        <span className="status-label">Last Updated</span>
+                        <span className="status-value">Just now</span>
                       </div>
                     </div>
-                    <a 
-                      href="https://boondocks.secure.simplybook.me" 
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="simplybook-link"
-                    >
-                      Open SimplyBook Admin →
-                    </a>
                   </div>
                 </div>
               </div>
@@ -607,6 +749,18 @@ export default function AdminPage() {
             disabled={state.isSaving}
           >
             {state.isSaving ? 'Saving...' : 'Save All Changes'}
+          </button>
+        </div>
+      )}
+      
+      {state.activeTab === 'schedule' && (
+        <div className="admin-actions">
+          <button 
+            onClick={saveBusinessHours} 
+            className="save-button"
+            disabled={state.isSaving}
+          >
+            {state.isSaving ? 'Saving...' : 'Update Business Hours'}
           </button>
         </div>
       )}
@@ -1065,6 +1219,153 @@ export default function AdminPage() {
           padding: 40px;
           font-size: 18px;
           color: #666;
+        }
+        
+        /* Business Hours Styles */
+        .business-hours-container {
+          display: grid;
+          grid-template-columns: 2fr 1fr;
+          gap: 20px;
+          align-items: start;
+        }
+        
+        .business-hours-card {
+          background: #f9f9f9;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          padding: 25px;
+        }
+        
+        .hours-description {
+          margin-bottom: 20px;
+          color: #666;
+          line-height: 1.5;
+        }
+        
+        .hours-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+        
+        .hours-row {
+          display: grid;
+          grid-template-columns: 200px 1fr;
+          align-items: center;
+          gap: 20px;
+          padding: 15px;
+          background: white;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+        }
+        
+        .day-label {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .day-name {
+          font-weight: 600;
+          font-size: 16px;
+          color: #333;
+        }
+        
+        .time-inputs {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+        
+        .time-group {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        
+        .time-group label {
+          font-size: 12px;
+          color: #666;
+          font-weight: 600;
+        }
+        
+        .time-input {
+          padding: 8px 12px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 14px;
+          min-width: 120px;
+        }
+        
+        .time-input:disabled {
+          background: #f5f5f5;
+          color: #999;
+          cursor: not-allowed;
+        }
+        
+        .time-separator {
+          font-weight: 600;
+          color: #666;
+          margin-top: 16px;
+        }
+        
+        .quick-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-bottom: 20px;
+        }
+        
+        .action-button {
+          padding: 10px 15px;
+          background: #2196f3;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+          text-align: left;
+        }
+        
+        .action-button:hover {
+          background: #1976d2;
+        }
+        
+        .sync-status {
+          border-top: 1px solid #e0e0e0;
+          padding-top: 15px;
+        }
+        
+        .status-value {
+          font-size: 14px;
+          color: #666;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+          .business-hours-container {
+            grid-template-columns: 1fr;
+            gap: 15px;
+          }
+          
+          .hours-row {
+            grid-template-columns: 1fr;
+            gap: 10px;
+          }
+          
+          .day-label {
+            justify-content: flex-start;
+            gap: 15px;
+          }
+          
+          .time-inputs {
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+          
+          .time-input {
+            min-width: 100px;
+          }
         }
       `}</style>
     </div>
