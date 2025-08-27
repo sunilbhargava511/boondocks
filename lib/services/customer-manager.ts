@@ -362,6 +362,9 @@ export class CustomerManager {
   async recordAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Appointment> {
     const appointment = await this.prisma.appointment.create({
       data: appointmentData,
+      include: {
+        customer: true,
+      },
     });
 
     // Update customer stats
@@ -370,14 +373,158 @@ export class CustomerManager {
     return appointment;
   }
 
-  async updateAppointmentStatus(appointmentId: string, status: Appointment['status']): Promise<void> {
+  async getAppointments(filters: any = {}, limit: number = 100): Promise<Appointment[]> {
+    return await this.prisma.appointment.findMany({
+      where: filters,
+      include: {
+        customer: true,
+      },
+      orderBy: { appointmentDate: 'desc' },
+      take: limit,
+    });
+  }
+
+  async getAppointmentById(id: string): Promise<Appointment | null> {
+    return await this.prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+      },
+    });
+  }
+
+  async updateAppointment(id: string, data: Partial<Appointment>): Promise<Appointment> {
+    const appointment = await this.prisma.appointment.update({
+      where: { id },
+      data,
+      include: {
+        customer: true,
+      },
+    });
+
+    // Update customer stats if status changed
+    if (data.status) {
+      await this.updateCustomerStats(appointment.customerId, data.status);
+    }
+
+    return appointment;
+  }
+
+  async deleteAppointment(id: string): Promise<boolean> {
+    try {
+      await this.prisma.appointment.delete({
+        where: { id },
+      });
+      return true;
+    } catch (error) {
+      console.error('Error deleting appointment:', error);
+      return false;
+    }
+  }
+
+  async checkAppointmentConflict(params: {
+    providerId: string;
+    appointmentDate: Date;
+    duration: number;
+    excludeId?: string | null;
+  }): Promise<boolean> {
+    const { providerId, appointmentDate, duration, excludeId } = params;
+    
+    const appointmentEnd = new Date(appointmentDate.getTime() + duration * 60000);
+    
+    const conflicts = await this.prisma.appointment.findMany({
+      where: {
+        providerId,
+        id: excludeId ? { not: excludeId } : undefined,
+        status: {
+          in: ['confirmed', 'in_progress'],
+        },
+        OR: [
+          // New appointment starts during existing appointment
+          {
+            appointmentDate: { lte: appointmentDate },
+            AND: {
+              appointmentDate: {
+                gte: new Date(appointmentDate.getTime() - 60 * 60000), // Within an hour for safety
+              },
+            },
+          },
+          // New appointment ends during existing appointment
+          {
+            appointmentDate: { gte: appointmentDate, lte: appointmentEnd },
+          },
+        ],
+      },
+    });
+
+    return conflicts.length > 0;
+  }
+
+  async updateAppointmentStatus(appointmentId: string, status: Appointment['status'], notes?: string): Promise<void> {
     const appointment = await this.prisma.appointment.update({
       where: { id: appointmentId },
-      data: { status },
+      data: { 
+        status,
+        notes: notes || undefined,
+      },
     });
 
     // Update customer stats based on status change
     await this.updateCustomerStats(appointment.customerId, status);
+  }
+
+  async batchUpdateAppointmentStatus(appointmentIds: string[], status: Appointment['status'], notes?: string): Promise<{ updated: number; errors: string[] }> {
+    const results = { updated: 0, errors: [] as string[] };
+
+    for (const id of appointmentIds) {
+      try {
+        await this.updateAppointmentStatus(id, status, notes);
+        results.updated++;
+      } catch (error) {
+        results.errors.push(`Failed to update appointment ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    return results;
+  }
+
+  async getDailyAppointmentStats(startDate: Date, endDate: Date): Promise<any> {
+    const appointments = await this.prisma.appointment.findMany({
+      where: {
+        appointmentDate: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+
+    const dailyStats: Record<string, any> = {};
+
+    appointments.forEach(appointment => {
+      const dateKey = appointment.appointmentDate.toISOString().split('T')[0];
+      
+      if (!dailyStats[dateKey]) {
+        dailyStats[dateKey] = {
+          date: dateKey,
+          total: 0,
+          confirmed: 0,
+          completed: 0,
+          cancelled: 0,
+          no_show: 0,
+          in_progress: 0,
+          revenue: 0,
+        };
+      }
+
+      dailyStats[dateKey].total++;
+      dailyStats[dateKey][appointment.status]++;
+      
+      if (appointment.status === 'completed') {
+        dailyStats[dateKey].revenue += Number(appointment.price);
+      }
+    });
+
+    return Object.values(dailyStats);
   }
 
   private async updateCustomerStats(customerId: string, appointmentStatus: Appointment['status']): Promise<void> {

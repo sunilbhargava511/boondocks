@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { isSameDay } from 'date-fns';
 import { Service, Provider } from '@/lib/types';
 import { loadServices, loadProviders, isProviderAvailableOnDay } from '@/lib/data';
+import CustomerInfoForm from '@/components/CustomerInfoForm';
 
 interface BookingState {
   service?: Service;
@@ -12,6 +13,18 @@ interface BookingState {
   time?: string;
   price?: number;
 }
+
+interface CustomerInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  notes?: string;
+  marketingConsent: boolean;
+  smsConsent: boolean;
+}
+
+type BookingStep = 'service-selection' | 'customer-info' | 'confirmation';
 
 // Generate deterministic seed for consistent availability
 const getSlotSeed = (date: Date, provider?: Provider, service?: Service): number => {
@@ -136,6 +149,9 @@ export default function BookingWidget() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [timeSlots, setTimeSlots] = useState<{time: string, available: boolean}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentStep, setCurrentStep] = useState<BookingStep>('service-selection');
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
   // Load data
   useEffect(() => {
@@ -195,23 +211,97 @@ export default function BookingWidget() {
 
   const selectTime = (time: string) => {
     setBooking(prev => ({ ...prev, time }));
+    setCurrentStep('customer-info');
   };
 
   const getServicesByCategory = (category: string) => {
     return services.filter(service => service.category === category);
   };
 
-  const confirmBooking = () => {
-    if (booking.service && booking.provider && booking.date && booking.time) {
-      const dateStr = booking.date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        month: 'long', 
-        day: 'numeric',
-        year: 'numeric'
+  const handleCustomerInfoSubmit = async (info: CustomerInfo) => {
+    setCustomerInfo(info);
+    setIsSubmittingBooking(true);
+    
+    try {
+      // Create or find customer
+      const customerResponse = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...info,
+          syncToSimplyBook: true, // This will also create in SimplyBook
+        }),
       });
       
-      alert(`Booking Confirmed!\n\nService: ${booking.service.name}\nProvider: ${booking.provider.name}\nDate: ${dateStr}\nTime: ${booking.time}\nTotal: $${booking.price}\n\nThank you for booking with Boondocks Barbershop!`);
+      let customer;
+      if (customerResponse.status === 400) {
+        // Customer might already exist, try to find by email
+        const searchResponse = await fetch(`/api/customers?email=${encodeURIComponent(info.email)}`);
+        const searchData = await searchResponse.json();
+        if (searchData.customers && searchData.customers.length > 0) {
+          customer = searchData.customers[0];
+        } else {
+          throw new Error('Failed to create or find customer');
+        }
+      } else if (customerResponse.ok) {
+        const data = await customerResponse.json();
+        customer = data.customer;
+      } else {
+        throw new Error('Failed to create customer');
+      }
+
+      // Create appointment
+      if (booking.service && booking.provider && booking.date && booking.time && customer) {
+        const appointmentDate = new Date(booking.date);
+        const [time, period] = booking.time.split(' ');
+        const [hours, minutes] = time.split(':').map(Number);
+        let adjustedHours = hours;
+        if (period === 'PM' && hours !== 12) adjustedHours += 12;
+        if (period === 'AM' && hours === 12) adjustedHours = 0;
+        
+        appointmentDate.setHours(adjustedHours, minutes, 0, 0);
+
+        const appointmentResponse = await fetch('/api/appointments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerId: customer.id,
+            serviceId: booking.service.id,
+            serviceName: booking.service.name,
+            providerId: booking.provider.id,
+            providerName: booking.provider.name,
+            appointmentDate: appointmentDate.toISOString(),
+            duration: booking.service.duration,
+            price: booking.price,
+            status: 'confirmed',
+            notes: info.notes,
+          }),
+        });
+
+        if (!appointmentResponse.ok) {
+          throw new Error('Failed to create appointment');
+        }
+
+        const appointmentData = await appointmentResponse.json();
+        setCurrentStep('confirmation');
+      }
+    } catch (error) {
+      console.error('Booking error:', error);
+      alert('Sorry, there was an error processing your booking. Please try again or call us directly.');
+    } finally {
+      setIsSubmittingBooking(false);
     }
+  };
+
+  const handleBackToTimeSelection = () => {
+    setCurrentStep('service-selection');
+  };
+
+  const handleStartNewBooking = () => {
+    setBooking({});
+    setCustomerInfo(null);
+    setCurrentStep('service-selection');
+    setTimeSlots([]);
   };
 
   const isBookingComplete = booking.service && booking.provider && booking.date && booking.time;
@@ -240,8 +330,82 @@ export default function BookingWidget() {
       <div className="booking-wrapper">
         <div className="booking-content">
           
-          {/* Service Selection */}
-          <div className="section">
+          {/* Customer Info Form Step */}
+          {currentStep === 'customer-info' && (
+            <CustomerInfoForm 
+              onSubmit={handleCustomerInfoSubmit}
+              onBack={handleBackToTimeSelection}
+              isSubmitting={isSubmittingBooking}
+            />
+          )}
+
+          {/* Booking Confirmation Step */}
+          {currentStep === 'confirmation' && booking.service && booking.provider && booking.date && booking.time && customerInfo && (
+            <div className="section">
+              <h3 className="section-title">Booking Confirmed! 🎉</h3>
+              <div className="confirmation-details">
+                <div className="booking-summary">
+                  <h4>Your Appointment Details</h4>
+                  <div className="detail-row">
+                    <span className="label">Service:</span>
+                    <span className="value">{booking.service.name}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Barber:</span>
+                    <span className="value">{booking.provider.name}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Date:</span>
+                    <span className="value">{booking.date.toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      month: 'long', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Time:</span>
+                    <span className="value">{booking.time}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Total:</span>
+                    <span className="value price">${booking.price}</span>
+                  </div>
+                </div>
+
+                <div className="customer-summary">
+                  <h4>Contact Information</h4>
+                  <div className="detail-row">
+                    <span className="label">Name:</span>
+                    <span className="value">{customerInfo.firstName} {customerInfo.lastName}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Email:</span>
+                    <span className="value">{customerInfo.email}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Phone:</span>
+                    <span className="value">{customerInfo.phone}</span>
+                  </div>
+                </div>
+
+                <div className="confirmation-actions">
+                  <p className="confirmation-note">
+                    Thank you for booking with Boondocks Barbershop! You'll receive a confirmation email shortly.
+                    {customerInfo.smsConsent && " We'll also send you a text reminder before your appointment."}
+                  </p>
+                  <button onClick={handleStartNewBooking} className="btn-primary">
+                    Book Another Appointment
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Service Selection Step */}
+          {currentStep === 'service-selection' && (
+            <>
+              <div className="section">
             <h3 className="section-title">Select Service</h3>
             <div className="service-categories">
               
@@ -454,19 +618,15 @@ export default function BookingWidget() {
               <span>Total:</span>
               <span>${booking.price || 0}</span>
             </div>
-            <button 
-              className="book-button" 
-              disabled={!isBookingComplete}
-              onClick={confirmBooking}
-            >
-              Book Appointment
-            </button>
+            {/* Note: The Book Appointment button is now handled by selectTime function */}
           </div>
+            </>
+          )}
 
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .booking-container {
           max-width: 900px;
           margin: 0 auto;
@@ -1404,6 +1564,231 @@ export default function BookingWidget() {
 
         .book-button:disabled::before {
           display: none;
+        }
+
+        /* Customer Info Form Styles */
+        .customer-info-form {
+          max-width: 600px;
+          margin: 0 auto;
+        }
+
+        .name-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+
+        @media (max-width: 430px) {
+          .name-row {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+        }
+
+        .form-group {
+          margin-bottom: 20px;
+        }
+
+        .form-label {
+          display: block;
+          margin-bottom: 8px;
+          font-family: 'Oswald', sans-serif;
+          font-weight: 500;
+          color: #2c2c2c;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-size: 12px;
+        }
+
+        .form-input {
+          width: 100%;
+          padding: 12px 16px;
+          border: 2px solid #8b7355;
+          background: white;
+          font-size: 14px;
+          transition: all 0.2s ease;
+          box-sizing: border-box;
+        }
+
+        .form-input:focus {
+          outline: none;
+          border-color: #c41e3a;
+          box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.1);
+        }
+
+        .form-input.error {
+          border-color: #c41e3a;
+          background-color: #fef2f2;
+        }
+
+        .error-message {
+          display: block;
+          color: #c41e3a;
+          font-size: 12px;
+          margin-top: 4px;
+        }
+
+        textarea.form-input {
+          resize: vertical;
+          min-height: 80px;
+        }
+
+        .consent-section {
+          background: #fff;
+          padding: 20px;
+          border: 2px solid #8b7355;
+          margin: 20px 0;
+        }
+
+        .checkbox-group {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .checkbox-group:last-child {
+          margin-bottom: 0;
+        }
+
+        .checkbox-input {
+          margin-top: 2px;
+          flex-shrink: 0;
+        }
+
+        .checkbox-label {
+          font-size: 14px;
+          line-height: 1.4;
+          color: #2c2c2c;
+        }
+
+        .form-actions {
+          display: flex;
+          gap: 16px;
+          justify-content: space-between;
+          margin-top: 32px;
+        }
+
+        @media (max-width: 430px) {
+          .form-actions {
+            flex-direction: column;
+            gap: 12px;
+          }
+        }
+
+        .btn-primary, .btn-secondary {
+          padding: 14px 24px;
+          font-family: 'Oswald', sans-serif;
+          font-weight: 600;
+          font-size: 14px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 48px;
+        }
+
+        .btn-primary {
+          background: #c41e3a;
+          color: white;
+          flex: 1;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          background: #a01729;
+          transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+          background: #666;
+          cursor: not-allowed;
+        }
+
+        .btn-primary.loading {
+          opacity: 0.7;
+        }
+
+        .btn-secondary {
+          background: transparent;
+          color: #8b7355;
+          border: 2px solid #8b7355;
+        }
+
+        .btn-secondary:hover {
+          background: #8b7355;
+          color: white;
+        }
+
+        /* Confirmation Page Styles */
+        .confirmation-details {
+          max-width: 600px;
+          margin: 0 auto;
+        }
+
+        .booking-summary, .customer-summary {
+          background: white;
+          padding: 24px;
+          border: 2px solid #8b7355;
+          margin-bottom: 24px;
+        }
+
+        .booking-summary h4, .customer-summary h4 {
+          margin: 0 0 16px 0;
+          font-family: 'Oswald', sans-serif;
+          color: #2c2c2c;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .detail-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 12px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-row:last-child {
+          margin-bottom: 0;
+          border-bottom: none;
+        }
+
+        .detail-row .label {
+          font-family: 'Oswald', sans-serif;
+          color: #8b7355;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-size: 12px;
+        }
+
+        .detail-row .value {
+          font-weight: 500;
+          color: #2c2c2c;
+        }
+
+        .detail-row .value.price {
+          color: #c41e3a;
+          font-size: 18px;
+          font-weight: 600;
+        }
+
+        .confirmation-actions {
+          text-align: center;
+          padding: 24px;
+          background: #f8f8f8;
+          border: 2px solid #8b7355;
+        }
+
+        .confirmation-note {
+          margin-bottom: 24px;
+          color: #2c2c2c;
+          line-height: 1.6;
+          font-size: 14px;
         }
       `}</style>
     </div>
