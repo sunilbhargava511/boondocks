@@ -49,6 +49,8 @@ export class SimplyBookAPI {
   private apiKey: string;
   private token: string | null = null;
   private client: JSONRpcClient | null = null;
+  private adminToken: string | null = null;
+  private adminClient: JSONRpcClient | null = null;
 
   constructor(companyLogin: string, apiKey: string) {
     this.companyLogin = companyLogin;
@@ -216,6 +218,39 @@ export class SimplyBookAPI {
   async getTimezoneOffset(): Promise<{ offset: number; timezone: string }> {
     const client = await this.ensureClient();
     return await client.call('getCompanyTimezoneOffset');
+  }
+
+  // Admin API methods for sync functionality
+  async getAdminToken(): Promise<string> {
+    if (this.adminToken) return this.adminToken;
+
+    // For admin operations, we would need admin credentials
+    // For now, we'll use the same public token with admin endpoints
+    await this.getToken();
+    this.adminToken = this.token;
+
+    this.adminClient = new JSONRpcClient({
+      url: 'https://user-api.simplybook.me/admin',
+      headers: {
+        'X-Company-Login': this.companyLogin,
+        'X-Token': this.adminToken || ''
+      }
+    });
+
+    return this.adminToken!;
+  }
+
+  getAdminClient(token: string): JSONRpcClient {
+    if (!this.adminClient) {
+      this.adminClient = new JSONRpcClient({
+        url: 'https://user-api.simplybook.me/admin',
+        headers: {
+          'X-Company-Login': this.companyLogin,
+          'X-Token': token
+        }
+      });
+    }
+    return this.adminClient;
   }
 }
 

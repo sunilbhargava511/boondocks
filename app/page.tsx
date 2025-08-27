@@ -324,7 +324,10 @@ export default function BookingWidget() {
       <div className="header">
         <div className="logo">Boondocks</div>
         <div className="tagline">Traditional Barbershop • San Carlos</div>
-        <a href="/admin" className="admin-link" title="Admin Dashboard">⚙️</a>
+        <div className="header-links">
+          <a href="/providers" className="provider-link" title="Provider Portal">👤 Provider Portal</a>
+          <a href="/admin" className="admin-link" title="Admin Dashboard">⚙️ Admin</a>
+        </div>
       </div>
 
       <div className="booking-wrapper">
@@ -709,27 +712,44 @@ export default function BookingWidget() {
           border-bottom: 5px solid #8b7355;
         }
 
-        .admin-link {
+        .header-links {
           position: absolute;
           top: 20px;
           right: 20px;
-          width: 32px;
-          height: 32px;
           display: flex;
-          align-items: center;
-          justify-content: center;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 50%;
-          text-decoration: none;
-          font-size: 16px;
-          transition: all 0.2s;
-          opacity: 0.5;
+          gap: 12px;
         }
 
-        .admin-link:hover {
+        .admin-link, .provider-link {
+          color: #f5f5f0;
+          font-size: 12px;
+          text-decoration: none;
+          opacity: 0.8;
+          transition: all 0.2s ease;
+          font-family: 'Oswald', sans-serif;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          padding: 6px 10px;
+          border: 1px solid rgba(245, 245, 240, 0.3);
+          border-radius: 3px;
+          background: rgba(0, 0, 0, 0.2);
+        }
+
+        .admin-link:hover, .provider-link:hover {
           opacity: 1;
-          background: rgba(255, 255, 255, 0.2);
-          transform: rotate(90deg);
+          background: rgba(245, 245, 240, 0.1);
+          border-color: rgba(245, 245, 240, 0.6);
+          transform: translateY(-1px);
+        }
+
+        .provider-link {
+          background: rgba(196, 30, 58, 0.3);
+          border-color: rgba(196, 30, 58, 0.4);
+        }
+
+        .provider-link:hover {
+          background: rgba(196, 30, 58, 0.4);
+          border-color: rgba(196, 30, 58, 0.6);
         }
 
         .header::before {

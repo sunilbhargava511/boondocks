@@ -28,6 +28,8 @@ model Customer {
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
   lastVisit            DateTime? @map("last_visit")
+  lastLogin            DateTime? @map("last_login")
+  passwordHash         String?  @map("password_hash")
   marketingConsent     Boolean  @default(false) @map("marketing_consent")
   smsConsent           Boolean  @default(false) @map("sms_consent")
   emailConsent         Boolean  @default(true) @map("email_consent")
@@ -119,4 +121,57 @@ model SystemSettings {
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
+}
+
+// Provider Accounts
+model ProviderAccount {
+  id                String   @id @default(uuid())
+  providerId        String   @unique @map("provider_id") // Links to provider ID in JSON
+  email             String   @unique
+  passwordHash      String   @map("password_hash")
+  firstName         String   @map("first_name")
+  lastName          String   @map("last_name")
+  phone             String?
+  isActive          Boolean  @default(true) @map("is_active")
+  role              String   @default("provider") // provider or admin
+  lastLogin         DateTime? @map("last_login")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  unavailableDates  ProviderUnavailability[]
+  notifications     ProviderNotification[]
+  
+  @@map("provider_accounts")
+}
+
+// Provider Unavailability (for blocking dates/times)
+model ProviderUnavailability {
+  id          String   @id @default(uuid())
+  providerId  String   @map("provider_id")
+  provider    ProviderAccount @relation(fields: [providerId], references: [providerId], onDelete: Cascade)
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  allDay      Boolean  @default(true) @map("all_day")
+  reason      String?  // vacation, sick, personal, etc.
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([providerId, startDate])
+  @@map("provider_unavailability")
+}
+
+// Provider Notifications
+model ProviderNotification {
+  id          String   @id @default(uuid())
+  providerId  String   @map("provider_id")
+  provider    ProviderAccount @relation(fields: [providerId], references: [providerId], onDelete: Cascade)
+  type        String   // new_booking, cancellation, reminder
+  title       String
+  message     String
+  isRead      Boolean  @default(false) @map("is_read")
+  appointmentId String? @map("appointment_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([providerId, isRead])
+  @@map("provider_notifications")
 }

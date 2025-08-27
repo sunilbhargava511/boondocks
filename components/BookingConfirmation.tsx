@@ -286,7 +286,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             <svg className="h-4 w-4 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
               </svg>
-              Need to reschedule? Call us at (650) 597-2454 at least 24 hours in advance
+              Need to change your appointment? Use your booking code online or call (650) 597-2454
           </li>
         </ul>
       </div>
@@ -303,6 +303,16 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
           Add to Calendar
         </button>
         
+        <a
+          href="/manage-booking"
+          className="w-full px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium text-center flex items-center justify-center mb-3"
+        >
+          <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          Manage This Booking
+        </a>
+
         <div className="grid grid-cols-2 gap-3">
           <a
             href="tel:6505972454"

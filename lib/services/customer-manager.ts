@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { enhancedAPI } from '../enhanced-simplybook-api';
+import { getSimplyBookAPI } from '../simplybook-api';
 import { Customer, CustomerPreference, CustomerTag, Appointment, CSVCustomerRow } from '../types';
 
 interface CreateCustomerData {
@@ -434,6 +435,70 @@ export class CustomerManager {
     }
   }
 
+  async findAppointmentByCode(bookingCode: string, email: string): Promise<any> {
+    return await this.prisma.appointment.findFirst({
+      where: {
+        bookingCode,
+        customer: {
+          email: email.toLowerCase(),
+        },
+      },
+      include: {
+        customer: true,
+      },
+    });
+  }
+
+  async setCustomerPassword(customerId: string, passwordHash: string): Promise<void> {
+    await this.prisma.customer.update({
+      where: { id: customerId },
+      data: { passwordHash },
+    });
+  }
+
+  async getCustomerPassword(customerId: string): Promise<string | null> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { passwordHash: true },
+    });
+    return customer?.passwordHash || null;
+  }
+
+  async getCustomerAppointments(customerId: string): Promise<any[]> {
+    return await this.prisma.appointment.findMany({
+      where: { customerId },
+      orderBy: { appointmentDate: 'desc' },
+      include: {
+        customer: true,
+      },
+    });
+  }
+
+  async getAppointmentBySimplyBookId(simplybookId: number): Promise<any> {
+    return await this.prisma.appointment.findUnique({
+      where: { simplybookId },
+      include: {
+        customer: true,
+      },
+    });
+  }
+
+  async createAppointmentFromSync(appointmentData: any): Promise<any> {
+    return await this.prisma.appointment.create({
+      data: appointmentData,
+      include: {
+        customer: true,
+      },
+    });
+  }
+
+  async updateSystemSettings(data: any): Promise<any> {
+    return await this.prisma.systemSettings.update({
+      where: { id: 'default' },
+      data,
+    });
+  }
+
   async checkAppointmentConflict(params: {
     providerId: string;
     appointmentDate: Date;
@@ -619,26 +684,25 @@ export class CustomerManager {
             phone: customer.phone,
           };
 
-          // Only call SimplyBook API if sync is enabled
+          // Call SimplyBook API to create client
           if (settings.simplybookSyncEnabled) {
-            // Uncomment when ready to actually sync
-            // const clientId = await enhancedAPI.createClient(clientData);
-            // await this.prisma.customer.update({
-            //   where: { id: customerId },
-            //   data: {
-            //     simplybookId: clientId,
-            //     syncStatus: 'synced',
-            //   },
-            // });
-            
-            // For now, we'll simulate this
-            console.log('Would sync to SimplyBook:', clientData);
-            await this.prisma.customer.update({
-              where: { id: customerId },
-              data: {
-                syncStatus: 'synced',
-              },
-            });
+            const simplybookId = await this.syncCustomerToSimplyBook(customer);
+            if (simplybookId) {
+              await this.prisma.customer.update({
+                where: { id: customerId },
+                data: {
+                  simplybookId: simplybookId,
+                  syncStatus: 'synced',
+                },
+              });
+              console.log(`Customer ${customer.email} synced to SimplyBook with ID: ${simplybookId}`);
+            } else {
+              await this.prisma.customer.update({
+                where: { id: customerId },
+                data: { syncStatus: 'error' },
+              });
+              return false;
+            }
           }
         } catch (error) {
           await this.prisma.customer.update({
@@ -723,6 +787,98 @@ export class CustomerManager {
       return { success: true, customerId: customer.id };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  // SimplyBook appointment sync methods
+  async syncAppointmentCancellation(appointmentId: string): Promise<boolean> {
+    try {
+      const appointment = await this.getAppointmentById(appointmentId);
+      if (!appointment?.simplybookId) {
+        console.log('Appointment has no SimplyBook ID, skipping sync');
+        return true;
+      }
+
+      const settings = await this.getSystemSettings();
+      if (!settings.simplybookSyncEnabled) {
+        console.log('SimplyBook sync disabled');
+        return false;
+      }
+
+      const api = getSimplyBookAPI();
+      await api.getToken();
+      
+      // Cancel booking in SimplyBook
+      const result = await api.client.call('cancelBooking', [appointment.simplybookId]);
+      console.log(`Cancelled appointment ${appointment.simplybookId} in SimplyBook`);
+      
+      return true;
+    } catch (error) {
+      console.error('Error syncing cancellation to SimplyBook:', error);
+      return false;
+    }
+  }
+
+  async syncAppointmentReschedule(appointmentId: string, newDateTime: Date): Promise<boolean> {
+    try {
+      const appointment = await this.getAppointmentById(appointmentId);
+      if (!appointment?.simplybookId) {
+        console.log('Appointment has no SimplyBook ID, skipping sync');
+        return true;
+      }
+
+      const settings = await this.getSystemSettings();
+      if (!settings.simplybookSyncEnabled) {
+        console.log('SimplyBook sync disabled');
+        return false;
+      }
+
+      const api = getSimplyBookAPI();
+      await api.getToken();
+      
+      // Reschedule booking in SimplyBook
+      const result = await api.client.call('rescheduleBook', [
+        appointment.simplybookId,
+        newDateTime.toISOString()
+      ]);
+      console.log(`Rescheduled appointment ${appointment.simplybookId} in SimplyBook`);
+      
+      return true;
+    } catch (error) {
+      console.error('Error syncing reschedule to SimplyBook:', error);
+      return false;
+    }
+  }
+
+  async syncCustomerToSimplyBook(customer: any): Promise<number | null> {
+    try {
+      const settings = await this.getSystemSettings();
+      if (!settings.simplybookSyncEnabled) {
+        console.log('SimplyBook sync disabled');
+        return null;
+      }
+
+      const api = getSimplyBookAPI();
+      await api.getToken();
+
+      const clientData = {
+        name: `${customer.firstName} ${customer.lastName}`,
+        email: customer.email,
+        phone: customer.phone,
+        // Add additional fields if needed
+      };
+
+      // Create client in SimplyBook (using admin API)
+      const adminToken = await api.getAdminToken();
+      const adminClient = api.getAdminClient(adminToken);
+      
+      const clientId = await adminClient.call('addClient', [clientData]);
+      console.log(`Created SimplyBook client with ID: ${clientId}`);
+      
+      return clientId;
+    } catch (error) {
+      console.error('Error creating SimplyBook client:', error);
+      return null;
     }
   }
 

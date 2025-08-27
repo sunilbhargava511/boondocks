@@ -57,6 +57,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const appointment = await customerManager.updateAppointment(params.id, data);
+
+    // Sync changes to SimplyBook if needed
+    if (data.status === 'cancelled') {
+      await customerManager.syncAppointmentCancellation(params.id);
+    } else if (data.appointmentDate) {
+      await customerManager.syncAppointmentReschedule(params.id, new Date(data.appointmentDate));
+    }
     
     return NextResponse.json({ appointment });
   } catch (error) {

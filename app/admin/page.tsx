@@ -41,6 +41,14 @@ export default function AdminPage() {
 
   // Load data on mount
   useEffect(() => {
+    // Check if user has provider token - redirect them to provider portal
+    const providerToken = localStorage.getItem('providerToken');
+    if (providerToken) {
+      alert('Please use the Provider Portal at /providers for your account access.');
+      window.location.href = '/providers';
+      return;
+    }
+    
     loadData();
     loadBusinessHours();
   }, []);
