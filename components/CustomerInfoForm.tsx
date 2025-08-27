@@ -80,6 +80,26 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting }: Cus
   return (
     <div className="section">
       <h3 className="section-title">Your Information</h3>
+      <div className="existing-customer-prompt" style={{
+        background: '#f0f9ff',
+        border: '1px solid #0ea5e9',
+        borderRadius: '8px',
+        padding: '12px',
+        marginBottom: '20px',
+        textAlign: 'center'
+      }}>
+        <p style={{ margin: 0, fontSize: '14px', color: '#0369a1' }}>
+          Already have an account? 
+          <a href="/login" style={{ 
+            marginLeft: '8px',
+            color: '#0ea5e9',
+            fontWeight: 'bold',
+            textDecoration: 'underline'
+          }}>
+            Sign in to book faster
+          </a>
+        </p>
+      </div>
       <div className="customer-info-form">
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name Fields */}
