@@ -242,7 +242,6 @@ const CustomerDashboard: React.FC = () => {
                       <div className="text-sm text-gray-600">
                         {formatTime(appointment.appointmentDate)} • {appointment.duration} min • ${appointment.price}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">Booking: {appointment.bookingCode}</div>
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className={getStatusBadge(appointment.status)}>
@@ -281,7 +280,6 @@ const CustomerDashboard: React.FC = () => {
                         {format(parseISO(appointment.appointmentDate), 'EEEE, MMMM d, yyyy')} at {formatTime(appointment.appointmentDate)}
                       </div>
                       <div className="text-sm text-gray-600">{appointment.duration} min • ${appointment.price}</div>
-                      <div className="text-xs text-gray-500 mt-1">Booking: {appointment.bookingCode}</div>
                       {appointment.notes && (
                         <div className="text-xs text-gray-500 mt-1">Notes: {appointment.notes}</div>
                       )}
@@ -290,12 +288,20 @@ const CustomerDashboard: React.FC = () => {
                       <span className={getStatusBadge(appointment.status)}>
                         {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                       </span>
-                      <button
-                        onClick={() => handleCancelAppointment(appointment.id)}
-                        className="text-red-600 hover:text-red-800 text-sm font-medium"
-                      >
-                        Cancel
-                      </button>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => window.location.href = `/reschedule/${appointment.id}`}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Reschedule
+                        </button>
+                        <button
+                          onClick={() => handleCancelAppointment(appointment.id)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -323,7 +329,6 @@ const CustomerDashboard: React.FC = () => {
                         {format(parseISO(appointment.appointmentDate), 'EEEE, MMMM d, yyyy')} at {formatTime(appointment.appointmentDate)}
                       </div>
                       <div className="text-sm text-gray-600">{appointment.duration} min • ${appointment.price}</div>
-                      <div className="text-xs text-gray-500 mt-1">Booking: {appointment.bookingCode}</div>
                     </div>
                     <span className={getStatusBadge(appointment.status)}>
                       {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}

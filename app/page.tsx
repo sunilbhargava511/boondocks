@@ -326,8 +326,6 @@ export default function BookingWidget() {
         <div className="tagline">Traditional Barbershop • San Carlos</div>
         <div className="header-links">
           <a href="/login" className="login-link" title="Sign In">🔐 Sign In</a>
-          <a href="/manage-booking" className="manage-link" title="Manage Booking">📅 Manage Booking</a>
-          <a href="/access" className="access-link" title="All Portals">🚪 All Access</a>
         </div>
       </div>
 
@@ -721,7 +719,7 @@ export default function BookingWidget() {
           gap: 12px;
         }
 
-        .login-link, .manage-link, .access-link {
+        .login-link {
           color: #f5f5f0;
           font-size: 12px;
           text-decoration: none;

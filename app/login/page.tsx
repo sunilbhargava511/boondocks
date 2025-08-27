@@ -172,7 +172,10 @@ const LoginPage: React.FC = () => {
 
           {form.role !== 'admin' && (
             <div className="form-group">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">
+                Password
+                <a href="/forgot-password" className="forgot-link">Forgot password?</a>
+              </label>
               <input
                 type="password"
                 id="password"
@@ -358,6 +361,22 @@ const LoginPage: React.FC = () => {
           margin-bottom: 5px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
+          position: relative;
+        }
+
+        .forgot-link {
+          position: absolute;
+          right: 0;
+          top: 0;
+          font-size: 11px;
+          color: #c41e3a;
+          text-decoration: none;
+          text-transform: none;
+          letter-spacing: normal;
+        }
+
+        .forgot-link:hover {
+          text-decoration: underline;
         }
 
         .form-group input {
