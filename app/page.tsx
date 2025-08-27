@@ -229,7 +229,7 @@ export default function BookingWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...info,
-          syncToSimplyBook: true, // This will also create in SimplyBook
+          // syncToSimplyBook will be determined by system settings
         }),
       });
       

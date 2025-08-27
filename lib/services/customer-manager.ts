@@ -44,6 +44,10 @@ export class CustomerManager {
   }
 
   async createCustomer(data: CreateCustomerData): Promise<Customer> {
+    // Check system settings for auto-sync
+    const settings = await this.getSystemSettings();
+    const shouldSync = data.syncToSimplyBook ?? settings.autoSyncNewCustomers;
+    
     const customer = await this.prisma.customer.create({
       data: {
         email: data.email,
@@ -57,7 +61,7 @@ export class CustomerManager {
         marketingConsent: data.marketingConsent || false,
         smsConsent: data.smsConsent || false,
         emailConsent: data.emailConsent !== false, // default to true unless explicitly false
-        syncStatus: data.syncToSimplyBook !== false ? 'pending_simplybook_creation' : 'synced',
+        syncStatus: shouldSync && settings.simplybookSyncEnabled ? 'pending_simplybook_creation' : 'synced',
       },
       include: {
         preferences: true,
@@ -76,8 +80,8 @@ export class CustomerManager {
       await this.addCustomerTags(customer.id, data.tags);
     }
 
-    // Sync to SimplyBook if requested
-    if (data.syncToSimplyBook !== false) {
+    // Sync to SimplyBook if enabled and requested
+    if (shouldSync && settings.simplybookSyncEnabled) {
       await this.syncToSimplyBook(customer.id);
     }
 
@@ -360,6 +364,8 @@ export class CustomerManager {
 
   // Appointment tracking
   async recordAppointment(appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>): Promise<Appointment> {
+    const settings = await this.getSystemSettings();
+    
     const appointment = await this.prisma.appointment.create({
       data: appointmentData,
       include: {
@@ -369,6 +375,12 @@ export class CustomerManager {
 
     // Update customer stats
     await this.updateCustomerStats(appointmentData.customerId, appointmentData.status);
+
+    // Sync to SimplyBook if enabled
+    if (settings.simplybookSyncEnabled && settings.autoSyncAppointments) {
+      // TODO: Implement appointment sync to SimplyBook
+      console.log('Would sync appointment to SimplyBook:', appointment.id);
+    }
 
     return appointment;
   }
@@ -556,9 +568,37 @@ export class CustomerManager {
     });
   }
 
+  // System settings management
+  async getSystemSettings() {
+    let settings = await this.prisma.systemSettings.findFirst({
+      where: { id: 'default' }
+    });
+    
+    if (!settings) {
+      settings = await this.prisma.systemSettings.create({
+        data: {
+          id: 'default',
+          simplybookSyncEnabled: false,
+          autoSyncNewCustomers: false,
+          autoSyncAppointments: false,
+        }
+      });
+    }
+    
+    return settings;
+  }
+
   // SimplyBook synchronization
   async syncToSimplyBook(customerId: string): Promise<boolean> {
     try {
+      const settings = await this.getSystemSettings();
+      
+      // Check if SimplyBook sync is enabled
+      if (!settings.simplybookSyncEnabled) {
+        console.log('SimplyBook sync is disabled in system settings');
+        return false;
+      }
+      
       const customer = await this.getCustomerById(customerId);
       if (!customer) return false;
 
@@ -579,17 +619,27 @@ export class CustomerManager {
             phone: customer.phone,
           };
 
-          // This would use the enhanced SimplyBook API
-          // const clientId = await enhancedAPI.createClient(clientData);
-
-          // For now, we'll simulate this
-          await this.prisma.customer.update({
-            where: { id: customerId },
-            data: {
-              // simplybookId: clientId,
-              syncStatus: 'synced',
-            },
-          });
+          // Only call SimplyBook API if sync is enabled
+          if (settings.simplybookSyncEnabled) {
+            // Uncomment when ready to actually sync
+            // const clientId = await enhancedAPI.createClient(clientData);
+            // await this.prisma.customer.update({
+            //   where: { id: customerId },
+            //   data: {
+            //     simplybookId: clientId,
+            //     syncStatus: 'synced',
+            //   },
+            // });
+            
+            // For now, we'll simulate this
+            console.log('Would sync to SimplyBook:', clientData);
+            await this.prisma.customer.update({
+              where: { id: customerId },
+              data: {
+                syncStatus: 'synced',
+              },
+            });
+          }
         } catch (error) {
           await this.prisma.customer.update({
             where: { id: customerId },

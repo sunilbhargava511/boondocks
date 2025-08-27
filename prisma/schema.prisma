@@ -107,3 +107,16 @@ model ImportJob {
 
   @@map("import_jobs")
 }
+
+// System Settings for SimplyBook sync
+model SystemSettings {
+  id                  String   @id @default("default")
+  simplybookSyncEnabled Boolean @default(false) @map("simplybook_sync_enabled")
+  autoSyncNewCustomers Boolean @default(false) @map("auto_sync_new_customers")
+  autoSyncAppointments Boolean @default(false) @map("auto_sync_appointments")
+  lastSyncDate        DateTime? @map("last_sync_date")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}

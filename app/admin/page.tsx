@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { Provider, Service } from '@/lib/types';
 import { loadProviders, loadServices } from '@/lib/data';
 import CustomerManagement from '@/components/CustomerManagement';
+import SimplybookSyncSettings from '@/components/SimplybookSyncSettings';
 
 interface AdminState {
   isAuthenticated: boolean;
-  activeTab: 'barbers' | 'services' | 'schedule' | 'customers';
+  activeTab: 'barbers' | 'services' | 'schedule' | 'customers' | 'settings';
   providers: Provider[];
   services: Service[];
   businessHours: { [day: string]: { start: string; end: string; isOpen: boolean } };
@@ -450,6 +451,12 @@ export default function AdminPage() {
         >
           Customers
         </button>
+        <button
+          className={`tab ${state.activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setState(prev => ({ ...prev, activeTab: 'settings' }))}
+        >
+          Settings
+        </button>
       </div>
 
       {state.message.text && (
@@ -774,6 +781,12 @@ export default function AdminPage() {
             {state.activeTab === 'customers' && (
               <div className="customers-section">
                 <CustomerManagement />
+              </div>
+            )}
+
+            {state.activeTab === 'settings' && (
+              <div className="settings-section">
+                <SimplybookSyncSettings />
               </div>
             )}
           </>
