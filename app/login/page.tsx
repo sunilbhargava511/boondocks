@@ -25,17 +25,18 @@ const LoginPage: React.FC = () => {
     setError(null);
 
     try {
+      // For customers, redirect to magic link system
+      if (form.role === 'customer') {
+        window.location.href = '/customers';
+        return;
+      }
+
       let apiEndpoint = '';
       let redirectPath = '';
       let tokenKey = '';
 
       // Determine API endpoint and redirect based on role
       switch (form.role) {
-        case 'customer':
-          apiEndpoint = '/api/customers/auth';
-          redirectPath = '/customers/dashboard';
-          tokenKey = 'customerToken';
-          break;
         case 'provider':
           apiEndpoint = '/api/providers/auth';
           redirectPath = '/providers';
@@ -94,7 +95,7 @@ const LoginPage: React.FC = () => {
   const getRoleDescription = (role: UserRole) => {
     switch (role) {
       case 'customer':
-        return 'Access your appointments and profile';
+        return 'Magic link login - no password needed';
       case 'provider':
         return 'Manage your schedule and customers';
       case 'admin':
@@ -154,7 +155,7 @@ const LoginPage: React.FC = () => {
 
           <div className="form-group">
             <label htmlFor="email">
-              {form.role === 'admin' ? 'Admin Password' : 'Email Address'}
+              {form.role === 'admin' ? 'Admin Password' : (form.role === 'customer' ? 'Customer Login' : 'Email Address')}
             </label>
             <input
               type={form.role === 'admin' ? 'password' : 'email'}
@@ -164,13 +165,14 @@ const LoginPage: React.FC = () => {
                 ? setForm({ ...form, password: e.target.value })
                 : setForm({ ...form, email: e.target.value })
               }
-              placeholder={form.role === 'admin' ? 'Enter admin password' : 'your@email.com'}
-              required
+              placeholder={form.role === 'admin' ? 'Enter admin password' : (form.role === 'customer' ? 'Click button to continue' : 'your@email.com')}
+              required={form.role !== 'customer'}
+              disabled={form.role === 'customer'}
               autoComplete={form.role === 'admin' ? 'current-password' : 'email'}
             />
           </div>
 
-          {form.role !== 'admin' && (
+          {form.role === 'provider' && (
             <div className="form-group">
               <label htmlFor="password">
                 Password
@@ -193,7 +195,8 @@ const LoginPage: React.FC = () => {
             disabled={loading}
             className="login-button"
           >
-            {loading ? 'Signing in...' : `Sign in as ${form.role.charAt(0).toUpperCase() + form.role.slice(1)}`}
+            {loading ? (form.role === 'customer' ? 'Redirecting...' : 'Signing in...') : 
+             (form.role === 'customer' ? 'Continue to Magic Link Login' : `Sign in as ${form.role.charAt(0).toUpperCase() + form.role.slice(1)}`)}
           </button>
         </form>
 
@@ -219,7 +222,7 @@ const LoginPage: React.FC = () => {
           <div className="credentials-grid">
             <div className="credential-item">
               <strong>Customer:</strong>
-              <span>Sign up for new account</span>
+              <span>Use magic link (no password needed)</span>
             </div>
             <div className="credential-item">
               <strong>Provider:</strong>
