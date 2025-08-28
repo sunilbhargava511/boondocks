@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
       id: appointment.id,
       serviceName: appointment.serviceName,
       providerName: appointment.providerName,
+      serviceId: appointment.serviceId,
+      providerId: appointment.providerId,
       appointmentDate: appointment.appointmentDate,
       duration: appointment.duration,
       price: appointment.price,

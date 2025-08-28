@@ -15,6 +15,8 @@ interface Appointment {
   id: string;
   serviceName: string;
   providerName: string;
+  serviceId?: string;
+  providerId?: string;
   appointmentDate: string;
   duration: number;
   price: number;
@@ -31,12 +33,23 @@ const CustomerDashboard: React.FC = () => {
 
   useEffect(() => {
     checkAuth();
+    
+    // Check for success messages from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('rescheduled') === 'true') {
+      // Show success message for reschedule
+      setTimeout(() => {
+        alert('✅ Your appointment has been successfully rescheduled!');
+      }, 500);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   const checkAuth = async () => {
     const token = localStorage.getItem('customerToken');
     if (!token) {
-      window.location.href = '/customers';
+      showAuthExpiredMessage();
       return;
     }
 
@@ -47,7 +60,11 @@ const CustomerDashboard: React.FC = () => {
 
       if (!response.ok) {
         localStorage.removeItem('customerToken');
-        window.location.href = '/customers';
+        if (response.status === 401) {
+          showAuthExpiredMessage('Your session has expired. Please sign in again.');
+        } else {
+          showAuthExpiredMessage();
+        }
         return;
       }
 
@@ -55,9 +72,19 @@ const CustomerDashboard: React.FC = () => {
       setCustomer(data.customer);
       await loadAppointments(token);
     } catch (error) {
+      console.error('Authentication error:', error);
       localStorage.removeItem('customerToken');
-      window.location.href = '/customers';
+      showAuthExpiredMessage('Connection error. Please try signing in again.');
     }
+  };
+
+  const showAuthExpiredMessage = (message?: string) => {
+    setError(message || 'Please sign in to access your dashboard');
+    setLoading(false);
+    // Auto-redirect after showing error message
+    setTimeout(() => {
+      window.location.href = '/customers';
+    }, 3000);
   };
 
   const loadAppointments = async (token: string) => {
@@ -89,12 +116,31 @@ const CustomerDashboard: React.FC = () => {
     window.location.href = '/customers';
   };
 
+  const handleBookAgain = (appointment: Appointment) => {
+    // Create a URL with pre-filled service and provider parameters
+    const params = new URLSearchParams();
+    params.set('service', appointment.serviceName);
+    params.set('provider', appointment.providerName);
+    
+    if (appointment.serviceId) {
+      params.set('serviceId', appointment.serviceId);
+    }
+    if (appointment.providerId) {
+      params.set('providerId', appointment.providerId);
+    }
+    
+    window.location.href = `/?${params.toString()}`;
+  };
+
   const handleCancelAppointment = async (appointmentId: string) => {
     const confirmed = window.confirm('Are you sure you want to cancel this appointment?');
     if (!confirmed) return;
 
     const token = localStorage.getItem('customerToken');
-    if (!token) return;
+    if (!token) {
+      showAuthExpiredMessage();
+      return;
+    }
 
     try {
       const response = await fetch(`/api/appointments/${appointmentId}`, {
@@ -109,11 +155,16 @@ const CustomerDashboard: React.FC = () => {
       if (response.ok) {
         // Reload appointments
         await loadAppointments(token);
+      } else if (response.status === 401) {
+        localStorage.removeItem('customerToken');
+        showAuthExpiredMessage('Your session has expired. Please sign in again.');
       } else {
-        alert('Failed to cancel appointment');
+        const data = await response.json().catch(() => ({}));
+        alert(data.error || 'Failed to cancel appointment. Please try again.');
       }
     } catch (error) {
-      alert('Failed to cancel appointment');
+      console.error('Cancel appointment error:', error);
+      alert('Network error. Please check your connection and try again.');
     }
   };
 
@@ -166,15 +217,32 @@ const CustomerDashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Try Again
-          </button>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="bg-white p-8 rounded-lg shadow">
+            <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <div className="space-y-3">
+              <a
+                href="/customers"
+                className="block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium"
+              >
+                Sign In Again
+              </a>
+              <button
+                onClick={() => window.location.reload()}
+                className="block w-full text-gray-600 hover:text-gray-800 text-sm"
+              >
+                Try Refreshing
+              </button>
+            </div>
+            <div className="mt-4 text-xs text-gray-500">
+              Redirecting automatically in a few seconds...
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -370,7 +438,7 @@ const CustomerDashboard: React.FC = () => {
               ).map((appointment) => (
                 <div key={appointment.id} className="border rounded-lg p-4 bg-gray-50">
                   <div className="flex justify-between items-start">
-                    <div>
+                    <div className="flex-1">
                       <div className="font-medium text-gray-900">{appointment.serviceName}</div>
                       <div className="text-sm text-gray-600">with {appointment.providerName}</div>
                       <div className="text-sm text-gray-600">
@@ -378,9 +446,20 @@ const CustomerDashboard: React.FC = () => {
                       </div>
                       <div className="text-sm text-gray-600">{appointment.duration} min • ${appointment.price}</div>
                     </div>
-                    <span className={getStatusBadge(appointment.status)}>
-                      {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                    </span>
+                    <div className="flex items-center space-x-3">
+                      {appointment.status === 'completed' && (
+                        <button
+                          onClick={() => handleBookAgain(appointment)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium border border-blue-200 hover:border-blue-300 px-3 py-1 rounded-md transition-colors"
+                          title="Book the same service with the same provider"
+                        >
+                          Book Again
+                        </button>
+                      )}
+                      <span className={getStatusBadge(appointment.status)}>
+                        {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -153,7 +153,7 @@ export default function BookingWidget() {
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
-  // Load data
+  // Load data and handle URL parameters
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -163,6 +163,34 @@ export default function BookingWidget() {
         ]);
         setServices(servicesData);
         setProviders(providersData);
+        
+        // Check for URL parameters to pre-fill booking (for "Book Again" functionality)
+        const urlParams = new URLSearchParams(window.location.search);
+        const serviceName = urlParams.get('service');
+        const providerName = urlParams.get('provider');
+        const serviceId = urlParams.get('serviceId');
+        const providerId = urlParams.get('providerId');
+        
+        if (serviceName && providerName) {
+          // Find matching service and provider
+          const matchedService = servicesData.find(s => 
+            s.name === serviceName || (serviceId && s.id === serviceId)
+          );
+          const matchedProvider = providersData.find(p => 
+            p.name === providerName || (providerId && p.id === providerId)
+          );
+          
+          if (matchedService && matchedProvider) {
+            setBooking({
+              service: matchedService,
+              provider: matchedProvider,
+              price: matchedService.price
+            });
+            
+            // Clear URL parameters for cleaner experience
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
