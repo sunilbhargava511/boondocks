@@ -68,12 +68,17 @@ const CustomerDashboard: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setAppointments(data.appointments);
+        setAppointments(data.appointments || []);
+      } else if (response.status === 404) {
+        // No appointments found - this is normal for new customers
+        setAppointments([]);
       } else {
-        setError('Failed to load appointments');
+        // Only set error for actual server/network issues
+        setError('Unable to connect to appointment system');
       }
     } catch (error) {
-      setError('Failed to load appointments');
+      // Network or parsing error
+      setError('Unable to connect to appointment system');
     } finally {
       setLoading(false);
     }
@@ -178,6 +183,8 @@ const CustomerDashboard: React.FC = () => {
   if (!customer) return null;
 
   const { upcoming, today, past, cancelled } = getAppointmentsByStatus();
+  const hasAnyAppointments = appointments.length > 0;
+  const isNewCustomer = !hasAnyAppointments && !error;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -207,6 +214,24 @@ const CustomerDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* New Customer Welcome */}
+        {isNewCustomer && (
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow p-6 mb-6 text-white">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-2">Welcome to Boondocks Barbershop!</h2>
+              <p className="text-blue-100 mb-4">
+                You're all set up! Ready to book your first appointment with our skilled barbers?
+              </p>
+              <a
+                href="/"
+                className="inline-block bg-white text-blue-600 px-6 py-3 rounded-lg hover:bg-blue-50 font-medium text-lg shadow-lg transition-colors"
+              >
+                📅 Book Your First Appointment
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -259,13 +284,26 @@ const CustomerDashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Upcoming Appointments</h2>
           {upcoming.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">No upcoming appointments</p>
+            <div className="text-center py-12">
+              <div className="mb-4">
+                <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <span className="text-2xl">📅</span>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {isNewCustomer ? "Ready for your first cut?" : "No upcoming appointments"}
+                </h3>
+                <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                  {isNewCustomer 
+                    ? "Book your first appointment and experience the Boondocks difference. Our skilled barbers are ready to give you the perfect cut."
+                    : "Schedule your next appointment to keep looking sharp."
+                  }
+                </p>
+              </div>
               <a
                 href="/"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium"
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium text-lg shadow-sm"
               >
-                Book Your Next Appointment
+                {isNewCustomer ? "Book Your First Appointment" : "Book Your Next Appointment"}
               </a>
             </div>
           ) : (
@@ -314,7 +352,17 @@ const CustomerDashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Appointment History</h2>
           {past.length === 0 && cancelled.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">No appointment history yet</p>
+            <div className="text-center py-8">
+              <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                <span className="text-xl">✂️</span>
+              </div>
+              <p className="text-gray-500">
+                {isNewCustomer 
+                  ? "Your appointment history will appear here after your first visit"
+                  : "No appointment history yet"
+                }
+              </p>
+            </div>
           ) : (
             <div className="space-y-3">
               {[...past, ...cancelled].sort((a, b) => 
