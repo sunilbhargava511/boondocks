@@ -7,12 +7,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, action } = await req.json();
+    const body = await req.json();
+    const { email, password, action, firstName, lastName, phone, conversationPreference } = body;
 
     if (action === 'register') {
       // Customer registration
-      const { firstName, lastName, phone, conversationPreference } = await req.json();
-      
       if (!firstName || !lastName || !email || !phone || !password) {
         return NextResponse.json(
           { error: 'All fields are required for registration' },
@@ -32,26 +31,20 @@ export async function POST(req: NextRequest) {
       // Hash password
       const passwordHash = await bcrypt.hash(password, 10);
 
-      // Create customer with password and sync to SimplyBook
+      // Create customer with password
       const customer = await customerManager.createCustomer({
         firstName,
         lastName,
         email: email.toLowerCase(),
         phone,
+        passwordHash,
         conversationPreference: conversationPreference || 2,
-        marketingConsent: false,
-        smsConsent: false,
-        emailConsent: true,
-        syncToSimplyBook: true, // Enable sync for new registrations
       });
-
-      // Store password hash (we'll need to add this to the schema)
-      await customerManager.setCustomerPassword(customer.id, passwordHash);
 
       // Generate JWT token
       const token = jwt.sign(
         { 
-          customerId: customer.id,
+          userId: customer.id,
           email: customer.email,
           role: 'customer'
         },
@@ -88,9 +81,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Get stored password hash
-      const passwordHash = await customerManager.getCustomerPassword(customer.id);
-      if (!passwordHash) {
+      // Check if customer has password hash
+      if (!customer.passwordHash) {
         return NextResponse.json(
           { error: 'Account not set up for online access. Please use booking code lookup.' },
           { status: 401 }
@@ -98,7 +90,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Verify password
-      const isValidPassword = await bcrypt.compare(password, passwordHash);
+      const isValidPassword = await bcrypt.compare(password, customer.passwordHash);
       if (!isValidPassword) {
         return NextResponse.json(
           { error: 'Invalid email or password' },
@@ -114,7 +106,7 @@ export async function POST(req: NextRequest) {
       // Generate JWT token
       const token = jwt.sign(
         { 
-          customerId: customer.id,
+          userId: customer.id,
           email: customer.email,
           role: 'customer'
         },
@@ -156,7 +148,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const customer = await customerManager.getCustomerById(decoded.customerId);
+    const customer = await customerManager.getCustomerById(decoded.userId);
     if (!customer) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
