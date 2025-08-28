@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { customerManager } from '@/lib/services/customer-manager';
+import { providerManager } from '@/lib/services/provider-manager';
 import { sendPasswordResetEmail } from '@/lib/email';
 import crypto from 'crypto';
 
@@ -123,9 +124,35 @@ async function handlePasswordReset(token: string, newPassword: string) {
         await customerManager.setCustomerPassword(customer.id, passwordHash);
       }
     } else if (tokenData.role === 'provider') {
-      // Update provider password (would need to implement this)
-      // await providerManager.updatePassword(tokenData.email, newPassword);
-      console.log('Provider password reset for:', tokenData.email);
+      // Update provider password
+      const provider = await providerManager.getProviderByEmail(tokenData.email);
+      if (provider) {
+        const bcrypt = require('bcryptjs');
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        await providerManager.updateProviderPassword(tokenData.email, passwordHash);
+        console.log('✅ Provider password updated for:', tokenData.email);
+      } else {
+        // If no provider exists, we might want to create one
+        // For now, just log it
+        console.log('⚠️ No provider account found for:', tokenData.email);
+        console.log('Creating a temporary provider account...');
+        
+        // Create a basic provider account
+        const bcrypt = require('bcryptjs');
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        
+        // Generate a provider ID based on email
+        const providerId = `temp_${tokenData.email.split('@')[0]}_${Date.now()}`;
+        
+        await providerManager.createProvider({
+          email: tokenData.email,
+          password: newPassword,
+          firstName: tokenData.email.split('@')[0],
+          lastName: 'Provider',
+          providerId: providerId,
+        });
+        console.log('✅ Temporary provider account created');
+      }
     }
 
     // Delete the used token
