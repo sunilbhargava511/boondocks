@@ -1,23 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { customerManager } from '@/lib/services/customer-manager';
-import bcrypt from 'bcryptjs';
+import { sendMagicLinkEmail } from '@/lib/email';
+import crypto from 'crypto';
+
+// Store magic link tokens temporarily (in production, use database) 
+const registrationTokens = new Map<string, { email: string; customerData: any; expires: Date }>();
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, firstName, lastName, phone } = await req.json();
+    const { email, firstName, lastName, phone, conversationPreference } = await req.json();
 
     // Validate required fields
-    if (!email || !password || !firstName || !lastName || !phone) {
+    if (!email || !firstName || !lastName || !phone) {
       return NextResponse.json(
         { error: 'All fields are required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate password strength
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
         { status: 400 }
       );
     }
@@ -31,52 +27,47 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Create customer
+    // Create customer immediately (no password needed for magic links)
     const customer = await customerManager.createCustomer({
       email: email.toLowerCase(),
       firstName,
       lastName,
       phone,
-      passwordHash,
+      conversationPreference: conversationPreference || 2,
     });
 
-    // Generate auth token
-    const jwt = require('jsonwebtoken');
-    const token = jwt.sign(
-      { 
-        userId: customer.id,
-        email: customer.email,
-        role: 'customer',
-        name: `${customer.firstName} ${customer.lastName}`
-      },
-      process.env.JWT_SECRET || 'default-secret-key-change-in-production',
-      { expiresIn: '7d' }
-    );
+    // Generate magic link token for immediate login
+    const magicToken = crypto.randomBytes(32).toString('hex');
+    const expires = new Date();
+    expires.setMinutes(expires.getMinutes() + 15); // 15 minute expiration
 
-    // Set auth cookie
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: customer.id,
-        email: customer.email,
-        name: `${customer.firstName} ${customer.lastName}`,
-        role: 'customer'
-      }
+    // Store token with customer data
+    registrationTokens.set(magicToken, { 
+      email: customer.email,
+      customerData: customer,
+      expires 
     });
 
-    response.cookies.set('auth-token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    });
+    // Create magic link
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+      (process.env.NODE_ENV === 'production' 
+        ? 'https://boondocks-production.up.railway.app' 
+        : 'http://localhost:3000');
+    
+    const magicLink = `${baseUrl}/customers/auth?token=${magicToken}&welcome=true`;
+
+    // Send magic link email
+    const emailSent = await sendMagicLinkEmail(customer.email, magicLink);
+    
+    if (!emailSent) {
+      console.warn('Failed to send registration magic link email');
+    }
 
     console.log('✅ Customer registered successfully:', customer.email);
-    return response;
+    return NextResponse.json({
+      success: true,
+      message: 'Account created! Check your email for a magic link to sign in.'
+    });
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(

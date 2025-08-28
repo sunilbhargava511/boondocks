@@ -14,7 +14,6 @@ const CustomerPortalPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
     firstName: '',
     lastName: '',
     phone: '',
@@ -48,31 +47,36 @@ const CustomerPortalPage: React.FC = () => {
     }
   };
 
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/customers/auth', {
+      const endpoint = isLogin ? '/api/customers/magic-link' : '/api/auth/register';
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          action: isLogin ? 'login' : 'register'
-        }),
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Authentication failed');
+        throw new Error(data.error || 'Request failed');
       }
 
-      localStorage.setItem('customerToken', data.token);
-      setCustomer(data.customer);
+      if (isLogin) {
+        // Magic link sent
+        setMagicLinkSent(true);
+      } else {
+        // Registration successful, magic link sent
+        setMagicLinkSent(true);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      setError(err instanceof Error ? err.message : 'Request failed');
     } finally {
       setLoading(false);
     }
@@ -83,7 +87,6 @@ const CustomerPortalPage: React.FC = () => {
     setCustomer(null);
     setFormData({
       email: '',
-      password: '',
       firstName: '',
       lastName: '',
       phone: '',
@@ -108,35 +111,67 @@ const CustomerPortalPage: React.FC = () => {
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
-          {/* Toggle between login and register */}
-          <div className="flex mb-6">
-            <button
-              onClick={() => {
-                setIsLogin(true);
-                setError(null);
-              }}
-              className={`flex-1 py-2 px-4 text-center font-medium rounded-l-lg border ${
-                isLogin
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => {
-                setIsLogin(false);
-                setError(null);
-              }}
-              className={`flex-1 py-2 px-4 text-center font-medium rounded-r-lg border-t border-r border-b ${
-                !isLogin
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              Sign Up
-            </button>
-          </div>
+          {magicLinkSent ? (
+            // Magic link sent confirmation
+            <div className="text-center py-8">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <span className="text-2xl">📧</span>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Check Your Email!</h2>
+              <p className="text-gray-600 mb-4">
+                We've sent a magic link to <strong>{formData.email}</strong>
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                Click the link in your email to {isLogin ? 'sign in' : 'complete registration and sign in'}.
+                The link will expire in 15 minutes.
+              </p>
+              <button
+                onClick={() => {
+                  setMagicLinkSent(false);
+                  setError(null);
+                }}
+                className="text-blue-600 hover:text-blue-800 font-medium"
+              >
+                ← Send Another Link
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Toggle between login and register */}
+              <div className="flex mb-6">
+                <button
+                  onClick={() => {
+                    setIsLogin(true);
+                    setError(null);
+                    setMagicLinkSent(false);
+                  }}
+                  className={`flex-1 py-2 px-4 text-center font-medium rounded-l-lg border ${
+                    isLogin
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => {
+                    setIsLogin(false);
+                    setError(null);
+                    setMagicLinkSent(false);
+                  }}
+                  className={`flex-1 py-2 px-4 text-center font-medium rounded-r-lg border-t border-r border-b ${
+                    !isLogin
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  Sign Up
+                </button>
+              </div>
+            </>
+          )}
+
+          {!magicLinkSent && (
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -222,30 +257,12 @@ const CustomerPortalPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
-              {!isLogin && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Must be at least 6 characters long.
-                </p>
-              )}
-            </div>
-
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {loading ? (isLogin ? 'Signing In...' : 'Creating Account...') : (isLogin ? 'Sign In' : 'Create Account')}
+              {loading ? 'Sending Magic Link...' : (isLogin ? 'Send Magic Link' : 'Create Account & Send Link')}
             </button>
           </form>
 
@@ -258,6 +275,7 @@ const CustomerPortalPage: React.FC = () => {
                 Don't have an account? Use booking code lookup →
               </a>
             </div>
+          )}
           )}
         </div>
 
