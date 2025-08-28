@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { customerManager } from '@/lib/services/customer-manager';
+import { sendPasswordResetEmail } from '@/lib/email';
 import crypto from 'crypto';
 
 // In production, you'd store these tokens in the database with expiration
@@ -55,26 +56,15 @@ async function handleResetRequest(email: string, role: string) {
   // Store token (in production, store in database)
   resetTokens.set(resetToken, { email: email.toLowerCase(), role, expires });
 
-  // In production, you would send an email here with the reset link
-  // For development, we'll log the reset link
+  // Send password reset email
   const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
   
-  console.log('Password reset link:', resetLink);
-  console.log('Reset token:', resetToken);
-  console.log('Email:', email);
-
-  // In a real app, you'd use a service like SendGrid or AWS SES
-  // await sendEmail({
-  //   to: email,
-  //   subject: 'Reset Your Boondocks Barbershop Password',
-  //   html: `
-  //     <h2>Password Reset Request</h2>
-  //     <p>Click the link below to reset your password:</p>
-  //     <a href="${resetLink}">Reset Password</a>
-  //     <p>This link will expire in 1 hour.</p>
-  //     <p>If you didn't request this, please ignore this email.</p>
-  //   `
-  // });
+  // Send the email (falls back to console logging if not configured)
+  const emailSent = await sendPasswordResetEmail(email.toLowerCase(), resetLink, role as 'customer' | 'provider');
+  
+  if (!emailSent) {
+    console.warn('Failed to send password reset email, but continuing...');
+  }
 
   return NextResponse.json({ 
     message: 'Password reset instructions have been sent to your email',
