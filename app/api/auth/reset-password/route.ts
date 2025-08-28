@@ -27,6 +27,8 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleResetRequest(email: string, role: string) {
+  console.log('🔐 Password reset request received:', { email, role });
+  
   if (!email || !role) {
     return NextResponse.json(
       { error: 'Email and role are required' },
@@ -37,13 +39,16 @@ async function handleResetRequest(email: string, role: string) {
   // Validate that the email exists
   if (role === 'customer') {
     const customer = await customerManager.getCustomerByEmail(email.toLowerCase());
+    console.log('Customer lookup result:', customer ? 'found' : 'not found');
     if (!customer) {
+      console.log('⚠️ Customer not found, skipping email for security');
       // For security, still return success to prevent email enumeration
       return NextResponse.json({ 
         message: 'If an account exists, reset instructions have been sent' 
       });
     }
   } else if (role === 'provider') {
+    console.log('Provider password reset - proceeding without validation');
     // Check provider exists (would need to add this method)
     // For now, we'll accept any provider email
   }
@@ -59,11 +64,18 @@ async function handleResetRequest(email: string, role: string) {
   // Send password reset email
   const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
   
+  console.log('📧 Attempting to send password reset email...');
+  console.log('   To:', email.toLowerCase());
+  console.log('   Reset link:', resetLink);
+  
   // Send the email (falls back to console logging if not configured)
   const emailSent = await sendPasswordResetEmail(email.toLowerCase(), resetLink, role as 'customer' | 'provider');
   
   if (!emailSent) {
+    console.error('❌ Failed to send password reset email!');
     console.warn('Failed to send password reset email, but continuing...');
+  } else {
+    console.log('✅ Password reset email sent successfully to:', email);
   }
 
   return NextResponse.json({ 
