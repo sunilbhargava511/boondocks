@@ -8,6 +8,7 @@ import { isGuestBookingAllowed, getStoredEmail } from '@/lib/guest-cookie';
 import CustomerInfoForm from '@/components/CustomerInfoForm';
 import EmailGate from '@/components/EmailGate';
 import CookieManager from '@/components/CookieManager';
+import AppointmentManagementPopup from '@/components/AppointmentManagementPopup';
 
 interface BookingState {
   service?: Service;
@@ -156,6 +157,38 @@ export default function BookingWidget() {
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
+  
+  // Appointment management popup state
+  const [showAppointmentPopup, setShowAppointmentPopup] = useState(false);
+  const [userAppointments, setUserAppointments] = useState<any[]>([]);
+  const [appointmentCustomer, setAppointmentCustomer] = useState<any>(null);
+  const [hasUpcomingAppointments, setHasUpcomingAppointments] = useState(false);
+  const [hasPastAppointments, setHasPastAppointments] = useState(false);
+
+  // Function to check for existing appointments and show management popup
+  const checkForAppointments = async (email: string) => {
+    try {
+      const response = await fetch(`/api/appointments/by-email?email=${encodeURIComponent(email)}&upcoming=true`);
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.hasUpcoming || data.hasPast) {
+          setUserAppointments(data.appointments);
+          setAppointmentCustomer(data.customer);
+          setHasUpcomingAppointments(data.hasUpcoming);
+          setHasPastAppointments(data.hasPast);
+          
+          // Show popup after a short delay to allow page to settle
+          setTimeout(() => {
+            setShowAppointmentPopup(true);
+          }, 1000);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking appointments:', error);
+      // Don't show error to user, just continue with normal booking flow
+    }
+  };
 
   // Load data and handle URL parameters
   useEffect(() => {
@@ -176,6 +209,8 @@ export default function BookingWidget() {
           // Skip email gate for return visitors and store their email
           if (storedEmail) {
             setUserEmail(storedEmail);
+            // Check for existing appointments for returning visitor
+            checkForAppointments(storedEmail);
           }
           setCurrentStep('service-selection');
         }
@@ -1998,6 +2033,21 @@ export default function BookingWidget() {
           </div>
         </div>
       </div>
+      
+      {/* Appointment Management Popup */}
+      {showAppointmentPopup && appointmentCustomer && (
+        <AppointmentManagementPopup
+          appointments={userAppointments}
+          customer={appointmentCustomer}
+          hasUpcoming={hasUpcomingAppointments}
+          hasPast={hasPastAppointments}
+          onClose={() => setShowAppointmentPopup(false)}
+          onNewBooking={() => {
+            setShowAppointmentPopup(false);
+            // Continue with normal booking flow - already on service-selection step
+          }}
+        />
+      )}
     </div>
   );
 }
