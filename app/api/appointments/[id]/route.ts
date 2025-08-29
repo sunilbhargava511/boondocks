@@ -75,6 +75,32 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const data = await req.json();
+    
+    // Check if appointment exists
+    const existingAppointment = await customerManager.getAppointmentById(params.id);
+    if (!existingAppointment) {
+      return NextResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update only the provided fields (typically notes/message)
+    const appointment = await customerManager.updateAppointment(params.id, data);
+    
+    return NextResponse.json({ appointment });
+  } catch (error) {
+    console.error('Error updating appointment:', error);
+    return NextResponse.json(
+      { error: 'Failed to update appointment' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const success = await customerManager.deleteAppointment(params.id);

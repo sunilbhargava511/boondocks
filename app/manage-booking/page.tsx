@@ -22,6 +22,10 @@ const ManageBookingPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [message, setMessage] = useState('');
 
   // Check for stored email and auto-lookup appointments if available
   useEffect(() => {
@@ -67,6 +71,75 @@ const ManageBookingPage: React.FC = () => {
     }
 
     await lookupAppointmentsForEmail(email);
+  };
+
+  const handleCancelAppointment = async (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setShowCancelModal(true);
+  };
+
+  const confirmCancelAppointment = async () => {
+    if (!selectedAppointment) return;
+
+    try {
+      const response = await fetch(`/api/appointments/${selectedAppointment.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Refresh appointments
+        await lookupAppointmentsForEmail(email);
+        setShowCancelModal(false);
+        setSelectedAppointment(null);
+      } else {
+        setError('Failed to cancel appointment');
+      }
+    } catch (error) {
+      setError('Failed to cancel appointment');
+    }
+  };
+
+  const handleRescheduleAppointment = (appointment: Appointment) => {
+    // Redirect to booking page with pre-filled info
+    const params = new URLSearchParams({
+      service: appointment.serviceName,
+      serviceId: appointment.id, // We'll need to pass the actual service ID
+      reschedule: 'true',
+      appointmentId: appointment.id
+    });
+    window.location.href = `/?${params.toString()}`;
+  };
+
+  const handleAddMessage = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setMessage(appointment.notes || '');
+    setShowMessageModal(true);
+  };
+
+  const saveMessage = async () => {
+    if (!selectedAppointment) return;
+
+    try {
+      const response = await fetch(`/api/appointments/${selectedAppointment.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes: message }),
+      });
+
+      if (response.ok) {
+        // Refresh appointments
+        await lookupAppointmentsForEmail(email);
+        setShowMessageModal(false);
+        setSelectedAppointment(null);
+        setMessage('');
+      } else {
+        setError('Failed to save message');
+      }
+    } catch (error) {
+      setError('Failed to save message');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -309,9 +382,64 @@ const ManageBookingPage: React.FC = () => {
                       </div>
                       <div style={{
                         fontSize: '14px',
-                        color: '#6b7280'
+                        color: '#6b7280',
+                        marginBottom: '16px'
                       }}>
                         {appointment.duration} min • ${appointment.price} • Code: {appointment.bookingCode}
+                      </div>
+                      
+                      {/* Action buttons for upcoming appointments */}
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '8px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid #e5e7eb'
+                      }}>
+                        <button
+                          onClick={() => handleRescheduleAppointment(appointment)}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Reschedule
+                        </button>
+                        <button
+                          onClick={() => handleCancelAppointment(appointment)}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleAddMessage(appointment)}
+                          style={{
+                            padding: '8px 16px',
+                            background: '#6b7280',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Add Message
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -413,6 +541,138 @@ const ManageBookingPage: React.FC = () => {
             Book New Appointment →
           </a>
         </div>
+
+        {/* Cancel Modal */}
+        {showCancelModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: 'white',
+              padding: '24px',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '90%'
+            }}>
+              <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: '600' }}>
+                Cancel Appointment
+              </h3>
+              <p style={{ marginBottom: '24px', color: '#6b7280' }}>
+                Are you sure you want to cancel your appointment for {selectedAppointment?.serviceName} with {selectedAppointment?.providerName}?
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Keep Appointment
+                </button>
+                <button
+                  onClick={confirmCancelAppointment}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Yes, Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Message Modal */}
+        {showMessageModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              background: 'white',
+              padding: '24px',
+              borderRadius: '12px',
+              maxWidth: '500px',
+              width: '90%'
+            }}>
+              <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: '600' }}>
+                Add Message
+              </h3>
+              <p style={{ marginBottom: '12px', color: '#6b7280' }}>
+                Add a note for your appointment with {selectedAppointment?.providerName}:
+              </p>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Special requests, preferences, or notes..."
+                style={{
+                  width: '100%',
+                  minHeight: '100px',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  marginBottom: '16px'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowMessageModal(false)}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveMessage}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Save Message
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
