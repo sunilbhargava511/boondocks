@@ -28,7 +28,7 @@ interface CustomerInfo {
   smsConsent: boolean;
 }
 
-type BookingStep = 'email-gate' | 'magic-link-sent' | 'service-selection' | 'customer-info' | 'confirmation';
+type BookingStep = 'email-gate' | 'service-selection' | 'customer-info' | 'confirmation';
 
 // Generate deterministic seed for consistent availability
 const getSlotSeed = (date: Date, provider?: Provider, service?: Service): number => {
@@ -395,27 +395,8 @@ export default function BookingWidget() {
 
   const handleExistingUserProceed = async (email: string) => {
     setUserEmail(email);
-    
-    // Send magic link for existing user
-    try {
-      const response = await fetch('/api/customers/magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      if (response.ok) {
-        setCurrentStep('magic-link-sent');
-      } else {
-        console.error('Failed to send magic link');
-        // Fallback to service selection for now
-        setCurrentStep('service-selection');
-      }
-    } catch (error) {
-      console.error('Error sending magic link:', error);
-      // Fallback to service selection
-      setCurrentStep('service-selection');
-    }
+    // All users proceed to service selection (no magic links)
+    setCurrentStep('service-selection');
   };
 
   const isBookingComplete = booking.service && booking.provider && booking.date && booking.time;
@@ -442,45 +423,6 @@ export default function BookingWidget() {
     );
   }
 
-  // Show magic link sent confirmation
-  if (currentStep === 'magic-link-sent') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
-        <div className="max-w-md w-full text-center">
-          <div className="bg-white p-8 rounded-lg shadow">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <span className="text-2xl">📧</span>
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Check Your Email!</h2>
-            <p className="text-gray-600 mb-4">
-              We've sent a magic link to <strong>{userEmail}</strong>
-            </p>
-            <p className="text-sm text-gray-500 mb-6">
-              Click the link in your email to sign in and access your booking history.
-              The link will expire in 15 minutes.
-            </p>
-            <div className="space-y-3">
-              <button
-                onClick={() => setCurrentStep('email-gate')}
-                className="text-blue-600 hover:text-blue-800 font-medium"
-              >
-                ← Back to Email Entry
-              </button>
-              <div className="text-xs text-gray-400">
-                Or continue as guest without signing in:
-              </div>
-              <button
-                onClick={() => setCurrentStep('service-selection')}
-                className="text-gray-600 hover:text-gray-800 text-sm underline"
-              >
-                Continue as Guest
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="booking-container">

@@ -28,8 +28,6 @@ model Customer {
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
   lastVisit            DateTime? @map("last_visit")
-  lastLogin            DateTime? @map("last_login")
-  passwordHash         String?  @map("password_hash")
   marketingConsent     Boolean  @default(false) @map("marketing_consent")
   smsConsent           Boolean  @default(false) @map("sms_consent")
   emailConsent         Boolean  @default(true) @map("email_consent")

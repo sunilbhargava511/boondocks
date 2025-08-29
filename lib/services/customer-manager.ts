@@ -449,20 +449,6 @@ export class CustomerManager {
     });
   }
 
-  async setCustomerPassword(customerId: string, passwordHash: string): Promise<void> {
-    await this.prisma.customer.update({
-      where: { id: customerId },
-      data: { passwordHash },
-    });
-  }
-
-  async getCustomerPassword(customerId: string): Promise<string | null> {
-    const customer = await this.prisma.customer.findUnique({
-      where: { id: customerId },
-      select: { passwordHash: true },
-    });
-    return customer?.passwordHash || null;
-  }
 
   async getCustomerAppointments(customerId: string): Promise<any[]> {
     return await this.prisma.appointment.findMany({

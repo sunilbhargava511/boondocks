@@ -29,30 +29,8 @@ const EmailGate: React.FC<EmailGateProps> = ({ onGuestProceed, onExistingUserPro
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/customers/check-email?email=${encodeURIComponent(email)}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to check email');
-      }
-
-      if (data.exists) {
-        // Existing customer - proceed to magic link
-        onExistingUserProceed(data.email);
-      } else {
-        // New user - show confirmation
-        setShowConfirmation(true);
-      }
-    } catch (error) {
-      console.error('Email check error:', error);
-      setError('Unable to verify email. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    // All users proceed as guests - no account distinction
+    setShowConfirmation(true);
   };
 
   const handleNewUserConfirm = () => {
