@@ -14,10 +14,10 @@ export default function AccessPage() {
             <h3>📅 Customer Access</h3>
             <p>For customers to book and view appointments</p>
             <ul>
-              <li>Book appointments as guest</li>
-              <li>View all your appointments with email</li>
-              <li>No account needed</li>
-              <li>Cookie-based return visitor recognition</li>
+              <li>Passwordless booking - just provide your email</li>
+              <li>View all your appointments with email lookup</li>
+              <li>No passwords or account setup needed</li>
+              <li>Automatic recognition for return visits</li>
             </ul>
             <div className="portal-buttons">
               <a href="/manage-booking" className="portal-btn primary">View Appointments</a>

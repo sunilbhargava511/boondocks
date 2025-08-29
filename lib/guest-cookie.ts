@@ -1,5 +1,5 @@
-// Guest booking cookie management
-// Privacy-compliant cookie service for streamlined booking flow
+// Passwordless booking cookie management
+// Privacy-compliant cookie service for streamlined passwordless booking flow
 
 interface GuestCookieData {
   allowed: boolean;

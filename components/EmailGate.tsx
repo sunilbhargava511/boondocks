@@ -34,7 +34,7 @@ const EmailGate: React.FC<EmailGateProps> = ({ onGuestProceed, onExistingUserPro
   };
 
   const handleNewUserConfirm = () => {
-    // Set guest cookie with email and proceed
+    // Set passwordless booking cookie with email and proceed
     setGuestBookingAllowed(email);
     onGuestProceed();
   };
@@ -53,7 +53,7 @@ const EmailGate: React.FC<EmailGateProps> = ({ onGuestProceed, onExistingUserPro
             <div className="welcome-icon">👋</div>
             <h2 className="confirmation-title">Welcome to Boondocks!</h2>
             <p className="confirmation-subtitle">
-              It looks like you're new here. Let's get you booked quickly as a guest!
+              It looks like you're new here. Let's get you booked quickly - no passwords needed!
             </p>
           </div>
 
@@ -63,12 +63,12 @@ const EmailGate: React.FC<EmailGateProps> = ({ onGuestProceed, onExistingUserPro
 
           <div className="guest-booking-info">
             <div className="guest-benefits">
-              <h3>✨ Quick Guest Booking</h3>
-              <p>Book your appointment instantly without creating an account:</p>
+              <h3>✨ Passwordless Booking</h3>
+              <p>Book your appointment instantly - no passwords or account setup required:</p>
               <ul>
                 <li>✓ Book appointments instantly</li>
                 <li>✓ Receive confirmation emails</li>
-                <li>✓ No passwords or accounts needed</li>
+                <li>✓ No passwords or account setup needed</li>
                 <li>✓ Return visits are even faster</li>
               </ul>
             </div>

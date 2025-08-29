@@ -72,7 +72,7 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      // Set guest booking cookie with email if not already set (for new users)
+      // Set passwordless booking cookie with email if not already set (for new users)
       if (!isGuestBookingAllowed()) {
         setGuestBookingAllowed(formData.email);
       }

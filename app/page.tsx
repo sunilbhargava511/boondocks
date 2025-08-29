@@ -201,7 +201,7 @@ export default function BookingWidget() {
         setServices(servicesData);
         setProviders(providersData);
         
-        // Check if guest booking is allowed (has cookie)
+        // Check if passwordless booking is allowed (has cookie)
         const guestAllowed = isGuestBookingAllowed();
         const storedEmail = getStoredEmail();
         
@@ -238,7 +238,7 @@ export default function BookingWidget() {
               price: matchedService.price
             });
             
-            // If guest allowed, skip to service selection; otherwise show email gate first
+            // If passwordless booking allowed, skip to service selection; otherwise show email gate first
             if (guestAllowed) {
               setCurrentStep('service-selection');
             }
@@ -389,7 +389,7 @@ export default function BookingWidget() {
   };
 
   const handleGuestProceed = () => {
-    // Guest cookie already set in EmailGate component
+    // Passwordless booking cookie already set in EmailGate component
     setCurrentStep('service-selection');
   };
 

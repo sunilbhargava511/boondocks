@@ -41,7 +41,7 @@ const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) =
       setHasGuestCookie(false);
       setCookieAge(null);
       setStoredEmail(null);
-      alert('✅ Guest booking preferences cleared. You\'ll see the email prompt on your next visit.');
+      alert('✅ Passwordless booking preferences cleared. You\'ll see the email prompt on your next visit.');
     } else {
       alert('❌ Failed to clear cookie. Please try again or clear your browser cookies manually.');
     }
@@ -65,7 +65,7 @@ const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) =
               
               {!cookiesEnabled && (
                 <div className="cookie-warning">
-                  ⚠️ Cookies are disabled in your browser. Guest booking features may not work properly.
+                  ⚠️ Cookies are disabled in your browser. Passwordless booking features may not work properly.
                 </div>
               )}
 
@@ -94,7 +94,7 @@ const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) =
                 </div>
               ) : (
                 <div className="cookie-status inactive">
-                  <p>❌ <strong>Guest Booking Disabled</strong></p>
+                  <p>❌ <strong>Passwordless Booking Disabled</strong></p>
                   <p className="cookie-info">
                     You'll be prompted for your email before booking appointments.
                   </p>
@@ -272,7 +272,7 @@ const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) =
         {!cookiesEnabled && (
           <div className="warning-banner">
             <strong>⚠️ Cookies Disabled</strong>
-            <p>Cookies are disabled in your browser. Guest booking features will not work properly.</p>
+            <p>Cookies are disabled in your browser. Passwordless booking features will not work properly.</p>
           </div>
         )}
 
