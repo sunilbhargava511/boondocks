@@ -11,17 +11,17 @@ export default function AccessPage() {
       <div className="access-content">
         <div className="portal-section">
           <div className="portal-card customer">
-            <h3>🛍️ Customer Portal</h3>
-            <p>For customers to book and manage appointments</p>
+            <h3>📅 Customer Access</h3>
+            <p>For customers to book and view appointments</p>
             <ul>
-              <li>Create account or sign in</li>
-              <li>View all your appointments</li>
-              <li>Cancel or reschedule bookings</li>
-              <li>Manage your profile</li>
+              <li>Book appointments as guest</li>
+              <li>View all your appointments with email</li>
+              <li>No account needed</li>
+              <li>Cookie-based return visitor recognition</li>
             </ul>
             <div className="portal-buttons">
-              <a href="/customers" className="portal-btn primary">Customer Login</a>
-              <a href="/" className="portal-btn secondary">Quick Booking</a>
+              <a href="/manage-booking" className="portal-btn primary">View Appointments</a>
+              <a href="/" className="portal-btn secondary">Book Now</a>
             </div>
           </div>
 

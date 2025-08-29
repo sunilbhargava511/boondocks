@@ -227,10 +227,10 @@ const CustomerDashboard: React.FC = () => {
             <p className="text-gray-600 mb-6">{error}</p>
             <div className="space-y-3">
               <a
-                href="/customers"
+                href="/manage-booking"
                 className="block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium"
               >
-                Sign In Again
+                View My Appointments
               </a>
               <button
                 onClick={() => window.location.reload()}

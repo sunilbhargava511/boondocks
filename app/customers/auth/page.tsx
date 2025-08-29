@@ -15,7 +15,7 @@ function MagicLinkVerification() {
     
     if (!token) {
       setStatus('error');
-      setMessage('Invalid magic link - no token provided');
+      setMessage('This link appears to be invalid or incomplete');
       return;
     }
 
@@ -44,11 +44,11 @@ function MagicLinkVerification() {
       } else {
         const data = await response.json();
         setStatus('error');
-        setMessage(data.error || 'Invalid or expired magic link');
+        setMessage(data.error || 'This link has expired or already been used');
       }
     } catch (error) {
       setStatus('error');
-      setMessage('Network error - please try again');
+      setMessage('Network error - please try again later');
     }
   };
 
@@ -81,13 +81,16 @@ function MagicLinkVerification() {
                 <span className="text-2xl">❌</span>
               </div>
               <h2 className="text-xl font-bold text-red-800 mb-2">Link Invalid</h2>
-              <p className="text-gray-600 mb-6">{message}</p>
+              <p className="text-gray-600 mb-4">{message}</p>
+              <p className="text-gray-500 text-sm mb-6">
+                You can view your appointments anytime by simply entering your email address.
+              </p>
               <div className="space-y-3">
                 <a
-                  href="/customers"
+                  href="/manage-booking"
                   className="block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium"
                 >
-                  Request New Magic Link
+                  View My Appointments
                 </a>
                 <a
                   href="/"
