@@ -2027,9 +2027,6 @@ export default function BookingWidget() {
           </div>
           <div className="footer-controls">
             <CookieManager showInFooter />
-            <a href="/manage-booking" style={{color: 'rgba(255, 255, 255, 0.6)', textDecoration: 'none', fontSize: '11px'}}>
-              Manage Booking
-            </a>
           </div>
         </div>
       </div>
