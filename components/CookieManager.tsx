@@ -5,6 +5,7 @@ import {
   isGuestBookingAllowed, 
   clearGuestBookingCookie, 
   guestCookieManager,
+  getStoredEmail,
   areCookiesEnabled 
 } from '@/lib/guest-cookie';
 
@@ -15,6 +16,7 @@ interface CookieManagerProps {
 const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) => {
   const [hasGuestCookie, setHasGuestCookie] = useState(false);
   const [cookieAge, setCookieAge] = useState<number | null>(null);
+  const [storedEmail, setStoredEmail] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [cookiesEnabled, setCookiesEnabled] = useState(true);
 
@@ -23,6 +25,7 @@ const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) =
     const checkStatus = () => {
       setHasGuestCookie(isGuestBookingAllowed());
       setCookieAge(guestCookieManager.getGuestCookieAge());
+      setStoredEmail(getStoredEmail());
       setCookiesEnabled(areCookiesEnabled());
     };
 
@@ -37,6 +40,7 @@ const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) =
     if (clearGuestBookingCookie()) {
       setHasGuestCookie(false);
       setCookieAge(null);
+      setStoredEmail(null);
       alert('✅ Guest booking preferences cleared. You\'ll see the email prompt on your next visit.');
     } else {
       alert('❌ Failed to clear cookie. Please try again or clear your browser cookies manually.');
@@ -70,6 +74,11 @@ const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) =
                   <p>✅ <strong>Guest Booking Enabled</strong></p>
                   <p className="cookie-info">
                     You can book appointments directly without entering your email each time.
+                    {storedEmail && (
+                      <span className="stored-email">
+                        <br />Email: <strong>{storedEmail}</strong>
+                      </span>
+                    )}
                     {cookieAge !== null && (
                       <span className="cookie-age">
                         {cookieAge === 0 ? ' (set today)' : ` (${cookieAge} days ago)`}
@@ -188,6 +197,11 @@ const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) =
             line-height: 1.4;
           }
 
+          .stored-email {
+            color: #0369a1;
+            font-family: 'Courier New', monospace;
+          }
+
           .cookie-age {
             font-style: italic;
             opacity: 0.8;
@@ -277,6 +291,11 @@ const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) =
                   ? 'You can book appointments without entering your email each time.'
                   : 'You\'ll be prompted for your email before booking appointments.'
                 }
+                {storedEmail && hasGuestCookie && (
+                  <div className="status-email">
+                    Stored email: <strong>{storedEmail}</strong>
+                  </div>
+                )}
                 {cookieAge !== null && hasGuestCookie && (
                   <div className="status-age">
                     Set {cookieAge === 0 ? 'today' : `${cookieAge} days ago`}
@@ -400,6 +419,17 @@ const CookieManager: React.FC<CookieManagerProps> = ({ showInFooter = false }) =
           color: #666;
           font-size: 14px;
           line-height: 1.4;
+        }
+
+        .status-email {
+          color: #0369a1;
+          font-size: 12px;
+          font-family: 'Courier New', monospace;
+          margin-top: 6px;
+          padding: 4px 8px;
+          background: #f0f9ff;
+          border-radius: 4px;
+          display: inline-block;
         }
 
         .status-age {

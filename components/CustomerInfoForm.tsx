@@ -18,9 +18,10 @@ interface CustomerInfoFormProps {
   onBack: () => void;
   isSubmitting?: boolean;
   prefilledEmail?: string;
+  emailFromCookie?: boolean;
 }
 
-export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefilledEmail }: CustomerInfoFormProps) {
+export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefilledEmail, emailFromCookie }: CustomerInfoFormProps) {
   const [formData, setFormData] = useState<CustomerInfo>({
     firstName: '',
     lastName: '',
@@ -32,6 +33,7 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
   });
 
   const [errors, setErrors] = useState<Partial<CustomerInfo>>({});
+  const [showChangeEmail, setShowChangeEmail] = useState(false);
 
   // Set prefilled email if provided
   useEffect(() => {
@@ -70,9 +72,9 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      // Set guest booking cookie if not already set (for new users)
+      // Set guest booking cookie with email if not already set (for new users)
       if (!isGuestBookingAllowed()) {
-        setGuestBookingAllowed();
+        setGuestBookingAllowed(formData.email);
       }
       
       onSubmit(formData);
@@ -157,15 +159,74 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
           <div className="form-group">
             <label htmlFor="email" className="form-label">
               Email Address *
+              {emailFromCookie && !showChangeEmail && (
+                <span style={{
+                  fontSize: '11px',
+                  color: '#059669',
+                  fontWeight: 'normal',
+                  marginLeft: '8px',
+                  fontStyle: 'italic'
+                }}>
+                  (remembered from previous visit)
+                </span>
+              )}
             </label>
-            <input
-              type="email"
-              id="email"
-              value={formData.email}
-              onChange={handleChange('email')}
-              className={`form-input ${errors.email ? 'error' : ''}`}
-              placeholder="your.email@example.com"
-            />
+            {emailFromCookie && !showChangeEmail ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px',
+                background: '#f0fdf4',
+                border: '2px solid #22c55e',
+                borderRadius: '6px'
+              }}>
+                <div style={{
+                  flex: '1',
+                  fontFamily: 'Courier New, monospace',
+                  fontSize: '14px',
+                  color: '#166534',
+                  fontWeight: '600'
+                }}>
+                  {formData.email}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowChangeEmail(true)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #22c55e',
+                    color: '#166534',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    fontWeight: '600'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#22c55e';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#166534';
+                  }}
+                >
+                  Change email
+                </button>
+              </div>
+            ) : (
+              <input
+                type="email"
+                id="email"
+                value={formData.email}
+                onChange={handleChange('email')}
+                className={`form-input ${errors.email ? 'error' : ''}`}
+                placeholder="your.email@example.com"
+              />
+            )}
             {errors.email && (
               <span className="error-message">{errors.email}</span>
             )}

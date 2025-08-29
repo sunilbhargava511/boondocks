@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { isSameDay } from 'date-fns';
 import { Service, Provider } from '@/lib/types';
 import { loadServices, loadProviders, isProviderAvailableOnDay } from '@/lib/data';
-import { isGuestBookingAllowed } from '@/lib/guest-cookie';
+import { isGuestBookingAllowed, getStoredEmail } from '@/lib/guest-cookie';
 import CustomerInfoForm from '@/components/CustomerInfoForm';
 import EmailGate from '@/components/EmailGate';
 import CookieManager from '@/components/CookieManager';
@@ -170,9 +170,13 @@ export default function BookingWidget() {
         
         // Check if guest booking is allowed (has cookie)
         const guestAllowed = isGuestBookingAllowed();
+        const storedEmail = getStoredEmail();
         
         if (guestAllowed) {
-          // Skip email gate for return visitors
+          // Skip email gate for return visitors and store their email
+          if (storedEmail) {
+            setUserEmail(storedEmail);
+          }
           setCurrentStep('service-selection');
         }
         
@@ -464,6 +468,7 @@ export default function BookingWidget() {
               onBack={handleBackToTimeSelection}
               isSubmitting={isSubmittingBooking}
               prefilledEmail={userEmail}
+              emailFromCookie={!!userEmail && isGuestBookingAllowed()}
             />
           )}
 

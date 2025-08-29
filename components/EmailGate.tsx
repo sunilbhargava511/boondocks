@@ -56,8 +56,8 @@ const EmailGate: React.FC<EmailGateProps> = ({ onGuestProceed, onExistingUserPro
   };
 
   const handleNewUserConfirm = () => {
-    // Set guest cookie and proceed
-    setGuestBookingAllowed();
+    // Set guest cookie with email and proceed
+    setGuestBookingAllowed(email);
     onGuestProceed();
   };
 

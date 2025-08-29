@@ -3,6 +3,7 @@
 
 interface GuestCookieData {
   allowed: boolean;
+  email?: string; // Store email for return visitors
   firstSet: string; // ISO date string
   version: number; // For future migrations
 }
@@ -44,12 +45,13 @@ export class GuestCookieManager {
   /**
    * Set guest booking allowed cookie
    */
-  setGuestBookingAllowed(): boolean {
+  setGuestBookingAllowed(email?: string): boolean {
     if (!this.isClient) return false;
 
     try {
       const cookieData: GuestCookieData = {
         allowed: true,
+        email: email,
         firstSet: new Date().toISOString(),
         version: COOKIE_VERSION
       };
@@ -77,6 +79,48 @@ export class GuestCookieManager {
       return true;
     } catch (error) {
       console.error('Error clearing guest booking cookie:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get stored email from guest cookie
+   */
+  getStoredEmail(): string | null {
+    if (!this.isClient) return null;
+
+    try {
+      const cookieData = this.getCookieData();
+      return cookieData?.email || null;
+    } catch (error) {
+      console.error('Error getting stored email:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Update stored email in existing cookie
+   */
+  updateStoredEmail(email: string): boolean {
+    if (!this.isClient || !this.isGuestBookingAllowed()) return false;
+
+    try {
+      const existingData = this.getCookieData();
+      if (!existingData) return false;
+
+      const updatedData: GuestCookieData = {
+        ...existingData,
+        email: email
+      };
+
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + COOKIE_EXPIRY_DAYS);
+
+      document.cookie = `${COOKIE_NAME}=${encodeURIComponent(JSON.stringify(updatedData))}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Lax; Secure=${window.location.protocol === 'https:'}`;
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating stored email:', error);
       return false;
     }
   }
@@ -162,7 +206,9 @@ export const guestCookieManager = GuestCookieManager.getInstance();
 
 // Convenience functions for easier usage
 export const isGuestBookingAllowed = () => guestCookieManager.isGuestBookingAllowed();
-export const setGuestBookingAllowed = () => guestCookieManager.setGuestBookingAllowed();
+export const setGuestBookingAllowed = (email?: string) => guestCookieManager.setGuestBookingAllowed(email);
+export const getStoredEmail = () => guestCookieManager.getStoredEmail();
+export const updateStoredEmail = (email: string) => guestCookieManager.updateStoredEmail(email);
 export const clearGuestBookingCookie = () => guestCookieManager.clearGuestBookingCookie();
 export const shouldPromptAccountCreation = () => guestCookieManager.shouldPromptAccountCreation();
 export const areCookiesEnabled = () => guestCookieManager.areCookiesEnabled();
