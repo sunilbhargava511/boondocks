@@ -75,7 +75,7 @@ const EmailGate: React.FC<EmailGateProps> = ({ onGuestProceed, onExistingUserPro
             <div className="welcome-icon">👋</div>
             <h2 className="confirmation-title">Welcome to Boondocks!</h2>
             <p className="confirmation-subtitle">
-              It looks like you're new here. You can book as a guest or create an account.
+              It looks like you're new here. Let's get you booked quickly as a guest!
             </p>
           </div>
 
@@ -83,40 +83,24 @@ const EmailGate: React.FC<EmailGateProps> = ({ onGuestProceed, onExistingUserPro
             <span className="email-display">{email}</span>
           </div>
 
-          <div className="confirmation-options">
-            <div className="option-card guest-option">
-              <h3>📅 Continue as Guest</h3>
-              <p>Quick booking without creating an account</p>
+          <div className="guest-booking-info">
+            <div className="guest-benefits">
+              <h3>✨ Quick Guest Booking</h3>
+              <p>Book your appointment instantly without creating an account:</p>
               <ul>
                 <li>✓ Book appointments instantly</li>
                 <li>✓ Receive confirmation emails</li>
-                <li>✓ No password required</li>
-                <li>⚠ Limited appointment history</li>
+                <li>✓ No passwords or accounts needed</li>
+                <li>✓ Return visits are even faster</li>
               </ul>
-              <button
-                onClick={handleNewUserConfirm}
-                className="option-button primary"
-              >
-                Continue as Guest
-              </button>
             </div>
-
-            <div className="option-card account-option">
-              <h3>🔐 Create Account</h3>
-              <p>Full features with appointment history</p>
-              <ul>
-                <li>✓ View all past appointments</li>
-                <li>✓ Quick rebooking</li>
-                <li>✓ Manage preferences</li>
-                <li>✓ Reschedule easily</li>
-              </ul>
-              <a
-                href={`/customers?email=${encodeURIComponent(email)}`}
-                className="option-button secondary"
-              >
-                Create Account
-              </a>
-            </div>
+            
+            <button
+              onClick={handleNewUserConfirm}
+              className="continue-guest-button"
+            >
+              Continue to Booking
+            </button>
           </div>
 
           <div className="back-option">
@@ -188,98 +172,71 @@ const EmailGate: React.FC<EmailGateProps> = ({ onGuestProceed, onExistingUserPro
             font-weight: bold;
           }
 
-          .confirmation-options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+          .guest-booking-info {
+            text-align: center;
             margin-bottom: 30px;
           }
 
-          @media (max-width: 640px) {
-            .confirmation-options {
-              grid-template-columns: 1fr;
-            }
-          }
-
-          .option-card {
-            border: 2px solid #e5e5e5;
+          .guest-benefits {
+            background: #f0f9ff;
+            border: 2px solid #0ea5e9;
             border-radius: 8px;
             padding: 24px;
-            text-align: left;
-            transition: all 0.2s ease;
+            margin-bottom: 20px;
           }
 
-          .option-card:hover {
-            border-color: #8b7355;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(139, 115, 85, 0.1);
-          }
-
-          .option-card h3 {
+          .guest-benefits h3 {
             font-family: 'Oswald', sans-serif;
-            font-size: 18px;
-            color: #2c2c2c;
-            margin: 0 0 8px 0;
+            font-size: 20px;
+            color: #0369a1;
+            margin: 0 0 12px 0;
             text-transform: uppercase;
             letter-spacing: 1px;
           }
 
-          .option-card p {
-            color: #666;
+          .guest-benefits p {
+            color: #0369a1;
             font-size: 14px;
             margin: 0 0 16px 0;
+            line-height: 1.4;
           }
 
-          .option-card ul {
+          .guest-benefits ul {
             list-style: none;
             padding: 0;
-            margin: 0 0 20px 0;
+            margin: 0;
+            text-align: left;
           }
 
-          .option-card li {
-            font-size: 12px;
-            color: #555;
-            margin: 6px 0;
+          .guest-benefits li {
+            font-size: 13px;
+            color: #0369a1;
+            margin: 8px 0;
             padding-left: 20px;
             position: relative;
+            line-height: 1.3;
           }
 
-          .option-button {
+          .continue-guest-button {
             width: 100%;
-            padding: 12px 16px;
+            padding: 16px 24px;
+            background: #c41e3a;
+            color: white;
             border: none;
             border-radius: 6px;
             font-family: 'Oswald', sans-serif;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
             cursor: pointer;
             transition: all 0.2s ease;
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
           }
 
-          .option-button.primary {
-            background: #c41e3a;
-            color: white;
-          }
-
-          .option-button.primary:hover {
+          .continue-guest-button:hover {
             background: #a01729;
             transform: translateY(-1px);
-          }
-
-          .option-button.secondary {
-            background: transparent;
-            color: #8b7355;
-            border: 2px solid #8b7355;
-          }
-
-          .option-button.secondary:hover {
-            background: #8b7355;
-            color: white;
+            box-shadow: 0 4px 12px rgba(196, 30, 58, 0.3);
           }
 
           .back-option {
