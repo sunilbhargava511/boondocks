@@ -311,7 +311,7 @@ const EmailGate: React.FC<EmailGateProps> = ({ onGuestProceed, onExistingUserPro
           <p className="help-text">
             Already have a booking?{' '}
             <a href="/manage-booking" className="help-link">
-              Manage with booking code →
+              View your appointments →
             </a>
           </p>
         </div>

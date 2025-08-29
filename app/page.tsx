@@ -489,6 +489,7 @@ export default function BookingWidget() {
         <div className="logo">Boondocks</div>
         <div className="tagline">Traditional Barbershop • San Carlos</div>
         <div className="header-links">
+          <a href="/manage-booking" className="login-link" title="View My Appointments">📅 My Appointments</a>
           <a href="/login" className="login-link" title="Staff Login">🔑 Staff Login</a>
         </div>
       </div>
@@ -882,7 +883,7 @@ export default function BookingWidget() {
           top: 20px;
           right: 20px;
           display: flex;
-          gap: 12px;
+          gap: 20px;
         }
 
         .login-link {
@@ -2026,6 +2027,9 @@ export default function BookingWidget() {
             <p>(650) 597-2454 • Traditional cuts, modern service</p>
           </div>
           <div className="footer-controls">
+            <a href="/manage-booking" style={{color: 'rgba(255, 255, 255, 0.8)', textDecoration: 'none', fontSize: '12px', marginRight: '16px'}}>
+              View Appointments
+            </a>
             <CookieManager showInFooter />
           </div>
         </div>
