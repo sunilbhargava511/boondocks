@@ -489,7 +489,7 @@ export default function BookingWidget() {
         <div className="logo">Boondocks</div>
         <div className="tagline">Traditional Barbershop • San Carlos</div>
         <div className="header-links">
-          <a href="/login" className="login-link" title="Sign In">🔐 Sign In</a>
+          <a href="/login" className="login-link" title="Admin Login">⚙️ Admin</a>
         </div>
       </div>
 
