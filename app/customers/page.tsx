@@ -25,6 +25,15 @@ const CustomerPortalPage: React.FC = () => {
 
   useEffect(() => {
     checkAuth();
+    
+    // Check for email parameter (from email gate redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const emailParam = urlParams.get('email');
+    if (emailParam) {
+      setFormData(prev => ({ ...prev, email: emailParam }));
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   const checkAuth = async () => {

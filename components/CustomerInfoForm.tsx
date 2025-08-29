@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { setGuestBookingAllowed, isGuestBookingAllowed } from '@/lib/guest-cookie';
 
 interface CustomerInfo {
   firstName: string;
@@ -16,9 +17,10 @@ interface CustomerInfoFormProps {
   onSubmit: (customerInfo: CustomerInfo) => void;
   onBack: () => void;
   isSubmitting?: boolean;
+  prefilledEmail?: string;
 }
 
-export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting }: CustomerInfoFormProps) {
+export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefilledEmail }: CustomerInfoFormProps) {
   const [formData, setFormData] = useState<CustomerInfo>({
     firstName: '',
     lastName: '',
@@ -30,6 +32,13 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting }: Cus
   });
 
   const [errors, setErrors] = useState<Partial<CustomerInfo>>({});
+
+  // Set prefilled email if provided
+  useEffect(() => {
+    if (prefilledEmail) {
+      setFormData(prev => ({ ...prev, email: prefilledEmail }));
+    }
+  }, [prefilledEmail]);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<CustomerInfo> = {};
@@ -61,6 +70,11 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting }: Cus
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
+      // Set guest booking cookie if not already set (for new users)
+      if (!isGuestBookingAllowed()) {
+        setGuestBookingAllowed();
+      }
+      
       onSubmit(formData);
     }
   };

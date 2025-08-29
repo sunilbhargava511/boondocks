@@ -4,7 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { isSameDay } from 'date-fns';
 import { Service, Provider } from '@/lib/types';
 import { loadServices, loadProviders, isProviderAvailableOnDay } from '@/lib/data';
+import { isGuestBookingAllowed } from '@/lib/guest-cookie';
 import CustomerInfoForm from '@/components/CustomerInfoForm';
+import EmailGate from '@/components/EmailGate';
+import CookieManager from '@/components/CookieManager';
 
 interface BookingState {
   service?: Service;
@@ -24,7 +27,7 @@ interface CustomerInfo {
   smsConsent: boolean;
 }
 
-type BookingStep = 'service-selection' | 'customer-info' | 'confirmation';
+type BookingStep = 'email-gate' | 'magic-link-sent' | 'service-selection' | 'customer-info' | 'confirmation';
 
 // Generate deterministic seed for consistent availability
 const getSlotSeed = (date: Date, provider?: Provider, service?: Service): number => {
@@ -149,9 +152,10 @@ export default function BookingWidget() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [timeSlots, setTimeSlots] = useState<{time: string, available: boolean}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState<BookingStep>('service-selection');
+  const [currentStep, setCurrentStep] = useState<BookingStep>('email-gate');
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
 
   // Load data and handle URL parameters
   useEffect(() => {
@@ -163,6 +167,14 @@ export default function BookingWidget() {
         ]);
         setServices(servicesData);
         setProviders(providersData);
+        
+        // Check if guest booking is allowed (has cookie)
+        const guestAllowed = isGuestBookingAllowed();
+        
+        if (guestAllowed) {
+          // Skip email gate for return visitors
+          setCurrentStep('service-selection');
+        }
         
         // Check for URL parameters to pre-fill booking (for "Book Again" functionality)
         const urlParams = new URLSearchParams(window.location.search);
@@ -186,6 +198,11 @@ export default function BookingWidget() {
               provider: matchedProvider,
               price: matchedService.price
             });
+            
+            // If guest allowed, skip to service selection; otherwise show email gate first
+            if (guestAllowed) {
+              setCurrentStep('service-selection');
+            }
             
             // Clear URL parameters for cleaner experience
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -332,6 +349,36 @@ export default function BookingWidget() {
     setTimeSlots([]);
   };
 
+  const handleGuestProceed = () => {
+    // Guest cookie already set in EmailGate component
+    setCurrentStep('service-selection');
+  };
+
+  const handleExistingUserProceed = async (email: string) => {
+    setUserEmail(email);
+    
+    // Send magic link for existing user
+    try {
+      const response = await fetch('/api/customers/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (response.ok) {
+        setCurrentStep('magic-link-sent');
+      } else {
+        console.error('Failed to send magic link');
+        // Fallback to service selection for now
+        setCurrentStep('service-selection');
+      }
+    } catch (error) {
+      console.error('Error sending magic link:', error);
+      // Fallback to service selection
+      setCurrentStep('service-selection');
+    }
+  };
+
   const isBookingComplete = booking.service && booking.provider && booking.date && booking.time;
 
   if (isLoading) {
@@ -341,6 +388,56 @@ export default function BookingWidget() {
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mb-4"></div>
           <h2 className="text-xl font-semibold text-gray-100 mb-2">Loading Boondocks Barbershop</h2>
           <p className="text-gray-300">Preparing your booking experience...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show email gate for first-time users
+  if (currentStep === 'email-gate') {
+    return (
+      <EmailGate
+        onGuestProceed={handleGuestProceed}
+        onExistingUserProceed={handleExistingUserProceed}
+      />
+    );
+  }
+
+  // Show magic link sent confirmation
+  if (currentStep === 'magic-link-sent') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full text-center">
+          <div className="bg-white p-8 rounded-lg shadow">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-2xl">📧</span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Check Your Email!</h2>
+            <p className="text-gray-600 mb-4">
+              We've sent a magic link to <strong>{userEmail}</strong>
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Click the link in your email to sign in and access your booking history.
+              The link will expire in 15 minutes.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => setCurrentStep('email-gate')}
+                className="text-blue-600 hover:text-blue-800 font-medium"
+              >
+                ← Back to Email Entry
+              </button>
+              <div className="text-xs text-gray-400">
+                Or continue as guest without signing in:
+              </div>
+              <button
+                onClick={() => setCurrentStep('service-selection')}
+                className="text-gray-600 hover:text-gray-800 text-sm underline"
+              >
+                Continue as Guest
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -366,6 +463,7 @@ export default function BookingWidget() {
               onSubmit={handleCustomerInfoSubmit}
               onBack={handleBackToTimeSelection}
               isSubmitting={isSubmittingBooking}
+              prefilledEmail={userEmail}
             />
           )}
 
@@ -1837,7 +1935,64 @@ export default function BookingWidget() {
           line-height: 1.6;
           font-size: 14px;
         }
+
+        /* Footer */
+        .booking-footer {
+          background: #2c2c2c;
+          padding: 20px;
+          text-align: center;
+          margin-top: 40px;
+          color: rgba(255, 255, 255, 0.7);
+          font-size: 12px;
+        }
+
+        .footer-content {
+          max-width: 800px;
+          margin: 0 auto;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+
+        .footer-info {
+          flex: 1;
+        }
+
+        .footer-info p {
+          margin: 0 0 4px 0;
+        }
+
+        .footer-controls {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+        }
+
+        @media (max-width: 600px) {
+          .footer-content {
+            flex-direction: column;
+            text-align: center;
+          }
+        }
       `}</style>
+      
+      {/* Footer */}
+      <div className="booking-footer">
+        <div className="footer-content">
+          <div className="footer-info">
+            <p><strong>Boondocks Barbershop</strong> • 1152 Arroyo Ave, San Carlos, CA 94070</p>
+            <p>(650) 597-2454 • Traditional cuts, modern service</p>
+          </div>
+          <div className="footer-controls">
+            <CookieManager showInFooter />
+            <a href="/manage-booking" style={{color: 'rgba(255, 255, 255, 0.6)', textDecoration: 'none', fontSize: '11px'}}>
+              Manage Booking
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
