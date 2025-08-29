@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { setGuestBookingAllowed } from '@/lib/guest-cookie';
+import React, { useState, useEffect } from 'react';
+import { setGuestBookingAllowed, getStoredEmail } from '@/lib/guest-cookie';
 
 interface EmailGateProps {
   onGuestProceed: () => void;
@@ -13,6 +13,14 @@ const EmailGate: React.FC<EmailGateProps> = ({ onGuestProceed, onExistingUserPro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Initialize with stored email from cookie if available
+  useEffect(() => {
+    const storedEmail = getStoredEmail();
+    if (storedEmail) {
+      setEmail(storedEmail);
+    }
+  }, []);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

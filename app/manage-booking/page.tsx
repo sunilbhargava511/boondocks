@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
+import { setGuestBookingAllowed, getStoredEmail } from '@/lib/guest-cookie';
 
 interface Appointment {
   id: string;
@@ -22,19 +23,22 @@ const ManageBookingPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
 
-  const lookupAppointments = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email) {
-      setError('Please enter your email address');
-      return;
+  // Check for stored email and auto-lookup appointments if available
+  useEffect(() => {
+    const storedEmail = getStoredEmail();
+    if (storedEmail) {
+      setEmail(storedEmail);
+      // Auto-lookup appointments for returning users
+      lookupAppointmentsForEmail(storedEmail);
     }
+  }, []);
 
+  const lookupAppointmentsForEmail = async (emailAddress: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/appointments/by-email?email=${encodeURIComponent(email)}&upcoming=true&past=true`);
+      const response = await fetch(`/api/appointments/by-email?email=${encodeURIComponent(emailAddress)}&upcoming=true&past=true`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -43,12 +47,26 @@ const ManageBookingPage: React.FC = () => {
 
       setAppointments(data.appointments || []);
       setShowResults(true);
+      
+      // Store email in cookie for passwordless booking flow
+      setGuestBookingAllowed(emailAddress);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to lookup appointments');
       setAppointments([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const lookupAppointments = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    await lookupAppointmentsForEmail(email);
   };
 
   const getStatusColor = (status: string) => {
