@@ -2,13 +2,19 @@
 
 import React, { useState } from 'react';
 
+type UserRole = 'provider' | 'admin';
+
 interface LoginForm {
+  email: string;
   password: string;
+  role: UserRole;
 }
 
 const LoginPage: React.FC = () => {
   const [form, setForm] = useState<LoginForm>({
-    password: ''
+    email: '',
+    password: '',
+    role: 'admin'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,11 +25,32 @@ const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      // Admin login only
-      const response = await fetch('/api/admin/auth', {
+      let apiEndpoint = '';
+      let redirectPath = '';
+      let tokenKey = '';
+
+      // Determine API endpoint and redirect based on role
+      switch (form.role) {
+        case 'provider':
+          apiEndpoint = '/api/providers/auth';
+          redirectPath = '/providers';
+          tokenKey = 'providerToken';
+          break;
+        case 'admin':
+          apiEndpoint = '/api/admin/auth';
+          redirectPath = '/admin';
+          tokenKey = 'adminToken';
+          break;
+      }
+
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: form.password }),
+        body: JSON.stringify(
+          form.role === 'admin' 
+            ? { password: form.password }
+            : { email: form.email, password: form.password }
+        ),
       });
 
       const data = await response.json();
@@ -32,15 +59,26 @@ const LoginPage: React.FC = () => {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Store admin token (password directly)
-      localStorage.setItem('adminToken', form.password);
+      // Store token based on user type
+      if (form.role === 'admin') {
+        localStorage.setItem(tokenKey, form.password); // Admin uses password directly
+      } else {
+        localStorage.setItem(tokenKey, data.token);
+      }
 
-      // Redirect to admin dashboard
-      window.location.href = '/admin';
+      // Redirect to appropriate dashboard
+      window.location.href = redirectPath;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getRoleIcon = (role: UserRole) => {
+    switch (role) {
+      case 'provider': return '✂️';
+      case 'admin': return '⚙️';
     }
   };
 
@@ -49,11 +87,34 @@ const LoginPage: React.FC = () => {
       <div className="login-container">
         <div className="login-header">
           <h1 className="logo">Boondocks</h1>
-          <h2>Admin Login</h2>
-          <p className="login-subtitle">System administration access</p>
+          <h2>Staff Login</h2>
+          <p className="login-subtitle">Select your account type</p>
         </div>
 
-        {/* Simple Admin Login Form */}
+        {/* Role Selection */}
+        <div className="role-selector">
+          <button
+            type="button"
+            className={`role-button ${form.role === 'provider' ? 'active' : ''}`}
+            onClick={() => setForm({ ...form, role: 'provider' })}
+          >
+            <span className="role-icon">{getRoleIcon('provider')}</span>
+            <span className="role-name">Provider</span>
+            <span className="role-desc">Barber dashboard</span>
+          </button>
+          
+          <button
+            type="button"
+            className={`role-button ${form.role === 'admin' ? 'active' : ''}`}
+            onClick={() => setForm({ ...form, role: 'admin' })}
+          >
+            <span className="role-icon">{getRoleIcon('admin')}</span>
+            <span className="role-name">Admin</span>
+            <span className="role-desc">System management</span>
+          </button>
+        </div>
+
+        {/* Login Form */}
         <form onSubmit={handleLogin} className="login-form">
           {error && (
             <div className="error-message">
@@ -62,28 +123,50 @@ const LoginPage: React.FC = () => {
           )}
 
           <div className="form-group">
-            <label htmlFor="password">Admin Password</label>
+            <label htmlFor="email">
+              {form.role === 'admin' ? 'Admin Password' : 'Email Address'}
+            </label>
             <input
-              type="password"
-              id="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="Enter admin password"
+              type={form.role === 'admin' ? 'password' : 'email'}
+              id="email"
+              value={form.role === 'admin' ? form.password : form.email}
+              onChange={(e) => form.role === 'admin' 
+                ? setForm({ ...form, password: e.target.value })
+                : setForm({ ...form, email: e.target.value })
+              }
+              placeholder={form.role === 'admin' ? 'Enter admin password' : 'your@email.com'}
               required
-              autoComplete="current-password"
+              autoComplete={form.role === 'admin' ? 'current-password' : 'email'}
             />
           </div>
+
+          {form.role === 'provider' && (
+            <div className="form-group">
+              <label htmlFor="password">Password</label>
+              <input
+                type="password"
+                id="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="Enter your password"
+                required
+                autoComplete="current-password"
+              />
+            </div>
+          )}
 
           <button
             type="submit"
             className="login-button"
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign In to Admin Panel'}
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
 
           <p className="login-description">
-            Full system administration access
+            {form.role === 'admin' 
+              ? 'Full system administration access' 
+              : 'Manage your schedule and appointments'}
           </p>
         </form>
 
@@ -108,7 +191,7 @@ const LoginPage: React.FC = () => {
           padding: 40px;
           box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
           width: 100%;
-          max-width: 400px;
+          max-width: 450px;
         }
 
         .login-header {
@@ -136,6 +219,59 @@ const LoginPage: React.FC = () => {
           color: #6b7280;
           margin: 0;
           font-size: 14px;
+        }
+
+        .role-selector {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 24px;
+        }
+
+        .role-button {
+          background: white;
+          border: 2px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 16px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          text-align: center;
+        }
+
+        .role-button:hover {
+          border-color: #8b7355;
+          background: #faf9f8;
+        }
+
+        .role-button.active {
+          border-color: #8b7355;
+          background: #8b7355;
+          color: white;
+        }
+
+        .role-button.active .role-desc {
+          color: rgba(255, 255, 255, 0.9);
+        }
+
+        .role-icon {
+          display: block;
+          font-size: 24px;
+          margin-bottom: 8px;
+        }
+
+        .role-name {
+          display: block;
+          font-weight: 600;
+          font-size: 14px;
+          margin-bottom: 4px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .role-desc {
+          display: block;
+          font-size: 11px;
+          color: #6b7280;
         }
 
         .login-form {
@@ -247,6 +383,10 @@ const LoginPage: React.FC = () => {
           
           .login-header h2 {
             font-size: 20px;
+          }
+
+          .role-selector {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
