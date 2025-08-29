@@ -44,15 +44,48 @@ export default function AppointmentManagementPopup({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [message, setMessage] = useState('');
 
   const handleReschedule = (appointmentId: string) => {
     // Open reschedule page in new tab
     window.open(`/reschedule/${appointmentId}`, '_blank');
   };
 
-  const handleViewDetails = (bookingCode: string) => {
-    // Open manage booking page in new tab
-    window.open(`/manage-booking?code=${bookingCode}&email=${customer.email}`, '_blank');
+  const handleAddMessage = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setMessage(appointment.notes || '');
+    setShowMessageModal(true);
+  };
+
+  const saveMessage = async () => {
+    if (!selectedAppointment) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/appointments/${selectedAppointment.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes: message }),
+      });
+
+      if (response.ok) {
+        setSuccess('Message saved successfully!');
+        setShowMessageModal(false);
+        setSelectedAppointment(null);
+        setMessage('');
+        // Refresh appointments would require re-fetching data
+      } else {
+        setError('Failed to save message');
+      }
+    } catch (error) {
+      setError('Failed to save message');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const cancelAppointment = async (appointmentId: string) => {
@@ -372,10 +405,10 @@ export default function AppointmentManagementPopup({
                         flexWrap: 'wrap'
                       }}>
                         <button
-                          onClick={() => handleViewDetails(appointment.bookingCode)}
+                          onClick={() => handleAddMessage(appointment)}
                           style={{
-                            backgroundColor: '#f3f4f6',
-                            color: '#374151',
+                            backgroundColor: '#6b7280',
+                            color: 'white',
                             border: '1px solid #d1d5db',
                             padding: '6px 12px',
                             borderRadius: '4px',
@@ -384,13 +417,13 @@ export default function AppointmentManagementPopup({
                             fontWeight: '500'
                           }}
                           onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = '#e5e7eb';
+                            e.currentTarget.style.backgroundColor = '#4b5563';
                           }}
                           onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f3f4f6';
+                            e.currentTarget.style.backgroundColor = '#6b7280';
                           }}
                         >
-                          View Details
+                          Add Message
                         </button>
                         
                         {appointment.canModify && (
@@ -586,6 +619,80 @@ export default function AppointmentManagementPopup({
           </button>
         </div>
       </div>
+
+      {/* Message Modal */}
+      {showMessageModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '24px',
+            borderRadius: '12px',
+            maxWidth: '500px',
+            width: '90%'
+          }}>
+            <h3 style={{ marginBottom: '16px', fontSize: '18px', fontWeight: '600' }}>
+              Add Message
+            </h3>
+            <p style={{ marginBottom: '12px', color: '#6b7280' }}>
+              Add a note for your appointment with {selectedAppointment?.providerName}:
+            </p>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Special requests, preferences, or notes..."
+              style={{
+                width: '100%',
+                minHeight: '100px',
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px',
+                marginBottom: '16px'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowMessageModal(false)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveMessage}
+                disabled={loading}
+                style={{
+                  padding: '8px 16px',
+                  background: loading ? '#9ca3af' : '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {loading ? 'Saving...' : 'Save Message'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
