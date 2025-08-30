@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { setGuestBookingAllowed, isGuestBookingAllowed } from '@/lib/guest-cookie';
+import { setGuestBookingAllowed, isGuestBookingAllowed, getStoredCustomerInfo, updateStoredCustomerInfo } from '@/lib/guest-cookie';
 
 interface CustomerInfo {
   firstName: string;
@@ -29,16 +29,54 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
     phone: '',
     notes: '',
     marketingConsent: false,
-    smsConsent: false,
+    smsConsent: true, // Default to true for SMS reminders
   });
 
   const [errors, setErrors] = useState<Partial<CustomerInfo>>({});
   const [showChangeEmail, setShowChangeEmail] = useState(false);
 
-  // Set prefilled email if provided
+  // Set prefilled customer data from cookie or fetch from server
   useEffect(() => {
-    if (prefilledEmail) {
+    // First try to get stored customer info from cookie
+    const storedInfo = getStoredCustomerInfo();
+    
+    if (storedInfo) {
+      setFormData(prev => ({
+        ...prev,
+        firstName: storedInfo.firstName || prev.firstName,
+        lastName: storedInfo.lastName || prev.lastName,
+        phone: storedInfo.phone || prev.phone,
+        email: storedInfo.email || prefilledEmail || prev.email,
+        smsConsent: true, // Always default to true
+      }));
+    } else if (prefilledEmail) {
+      // If we only have email, try to fetch customer data from server
       setFormData(prev => ({ ...prev, email: prefilledEmail }));
+      
+      // Fetch customer data by email if they exist in the system
+      fetch(`/api/customers/check-email?email=${encodeURIComponent(prefilledEmail)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.exists) {
+            // Customer exists, fetch their full data
+            fetch(`/api/customers?email=${encodeURIComponent(prefilledEmail)}`)
+              .then(res => res.json())
+              .then(result => {
+                if (result.customers && result.customers.length > 0) {
+                  const customer = result.customers[0];
+                  setFormData(prev => ({
+                    ...prev,
+                    firstName: customer.firstName || prev.firstName,
+                    lastName: customer.lastName || prev.lastName,
+                    phone: customer.phone || prev.phone,
+                    smsConsent: true, // Always default to true
+                  }));
+                }
+              })
+              .catch(error => console.error('Error fetching customer data:', error));
+          }
+        })
+        .catch(error => console.error('Error checking customer email:', error));
     }
   }, [prefilledEmail]);
 
@@ -72,9 +110,21 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      // Set passwordless booking cookie with email if not already set (for new users)
+      // Update or set passwordless booking cookie with customer info
       if (!isGuestBookingAllowed()) {
-        setGuestBookingAllowed(formData.email);
+        setGuestBookingAllowed(formData.email, {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone
+        });
+      } else {
+        // Update existing cookie with latest customer info
+        updateStoredCustomerInfo({
+          email: formData.email,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone
+        });
       }
       
       onSubmit(formData);

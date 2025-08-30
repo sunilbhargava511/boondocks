@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { setGuestBookingAllowed, getStoredEmail } from '@/lib/guest-cookie';
+import { setGuestBookingAllowed, getStoredEmail, updateStoredCustomerInfo } from '@/lib/guest-cookie';
 import AppointmentManagementPopup from '@/components/AppointmentManagementPopup';
 
 interface Appointment {

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Customer Info Storage</title>
+</head>
+<body>
+    <h1>Test Customer Info Cookie Storage</h1>
+    
+    <button onclick="setCookie()">Set Test Cookie</button>
+    <button onclick="getCookie()">Get Cookie Info</button>
+    <button onclick="clearCookie()">Clear Cookie</button>
+    
+    <pre id="output"></pre>
+    
+    <script>
+        const COOKIE_NAME = 'boondocks_guest_booking';
+        
+        function setCookie() {
+            const data = {
+                allowed: true,
+                email: 'test@example.com',
+                firstName: 'John',
+                lastName: 'Doe',
+                phone: '555-123-4567',
+                firstSet: new Date().toISOString(),
+                version: 1
+            };
+            
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + 365);
+            
+            document.cookie = `${COOKIE_NAME}=${encodeURIComponent(JSON.stringify(data))}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Lax`;
+            
+            document.getElementById('output').textContent = 'Cookie set:\n' + JSON.stringify(data, null, 2);
+        }
+        
+        function getCookie() {
+            const cookies = document.cookie.split(';');
+            const guestCookie = cookies.find(cookie => cookie.trim().startsWith(`${COOKIE_NAME}=`));
+            
+            if (guestCookie) {
+                const cookieValue = guestCookie.split('=')[1];
+                const decodedValue = decodeURIComponent(cookieValue);
+                const data = JSON.parse(decodedValue);
+                document.getElementById('output').textContent = 'Cookie data:\n' + JSON.stringify(data, null, 2);
+            } else {
+                document.getElementById('output').textContent = 'No cookie found';
+            }
+        }
+        
+        function clearCookie() {
+            document.cookie = `${COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+            document.getElementById('output').textContent = 'Cookie cleared';
+        }
+    </script>
+</body>
+</html>

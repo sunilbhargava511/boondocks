@@ -4,6 +4,9 @@
 interface GuestCookieData {
   allowed: boolean;
   email?: string; // Store email for return visitors
+  firstName?: string; // Store first name for return visitors
+  lastName?: string; // Store last name for return visitors
+  phone?: string; // Store phone for return visitors
   firstSet: string; // ISO date string
   version: number; // For future migrations
 }
@@ -45,13 +48,16 @@ export class GuestCookieManager {
   /**
    * Set guest booking allowed cookie
    */
-  setGuestBookingAllowed(email?: string): boolean {
+  setGuestBookingAllowed(email?: string, customerInfo?: { firstName?: string; lastName?: string; phone?: string }): boolean {
     if (!this.isClient) return false;
 
     try {
       const cookieData: GuestCookieData = {
         allowed: true,
         email: email,
+        firstName: customerInfo?.firstName,
+        lastName: customerInfo?.lastName,
+        phone: customerInfo?.phone,
         firstSet: new Date().toISOString(),
         version: COOKIE_VERSION
       };
@@ -99,9 +105,31 @@ export class GuestCookieManager {
   }
 
   /**
-   * Update stored email in existing cookie
+   * Get stored customer info from guest cookie
    */
-  updateStoredEmail(email: string): boolean {
+  getStoredCustomerInfo(): { firstName?: string; lastName?: string; phone?: string; email?: string } | null {
+    if (!this.isClient) return null;
+
+    try {
+      const cookieData = this.getCookieData();
+      if (!cookieData) return null;
+      
+      return {
+        firstName: cookieData.firstName,
+        lastName: cookieData.lastName,
+        phone: cookieData.phone,
+        email: cookieData.email
+      };
+    } catch (error) {
+      console.error('Error getting stored customer info:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Update stored customer info in existing cookie
+   */
+  updateStoredCustomerInfo(customerInfo: { email?: string; firstName?: string; lastName?: string; phone?: string }): boolean {
     if (!this.isClient || !this.isGuestBookingAllowed()) return false;
 
     try {
@@ -110,7 +138,10 @@ export class GuestCookieManager {
 
       const updatedData: GuestCookieData = {
         ...existingData,
-        email: email
+        email: customerInfo.email || existingData.email,
+        firstName: customerInfo.firstName || existingData.firstName,
+        lastName: customerInfo.lastName || existingData.lastName,
+        phone: customerInfo.phone || existingData.phone
       };
 
       const expiryDate = new Date();
@@ -120,9 +151,16 @@ export class GuestCookieManager {
       
       return true;
     } catch (error) {
-      console.error('Error updating stored email:', error);
+      console.error('Error updating stored customer info:', error);
       return false;
     }
+  }
+
+  /**
+   * Update stored email in existing cookie
+   */
+  updateStoredEmail(email: string): boolean {
+    return this.updateStoredCustomerInfo({ email });
   }
 
   /**
@@ -206,9 +244,11 @@ export const guestCookieManager = GuestCookieManager.getInstance();
 
 // Convenience functions for easier usage
 export const isGuestBookingAllowed = () => guestCookieManager.isGuestBookingAllowed();
-export const setGuestBookingAllowed = (email?: string) => guestCookieManager.setGuestBookingAllowed(email);
+export const setGuestBookingAllowed = (email?: string, customerInfo?: { firstName?: string; lastName?: string; phone?: string }) => guestCookieManager.setGuestBookingAllowed(email, customerInfo);
 export const getStoredEmail = () => guestCookieManager.getStoredEmail();
+export const getStoredCustomerInfo = () => guestCookieManager.getStoredCustomerInfo();
 export const updateStoredEmail = (email: string) => guestCookieManager.updateStoredEmail(email);
+export const updateStoredCustomerInfo = (customerInfo: { email?: string; firstName?: string; lastName?: string; phone?: string }) => guestCookieManager.updateStoredCustomerInfo(customerInfo);
 export const clearGuestBookingCookie = () => guestCookieManager.clearGuestBookingCookie();
 export const shouldPromptAccountCreation = () => guestCookieManager.shouldPromptAccountCreation();
 export const areCookiesEnabled = () => guestCookieManager.areCookiesEnabled();
