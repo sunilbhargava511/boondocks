@@ -26,10 +26,16 @@ interface Customer {
 interface AppointmentManagementPopupProps {
   appointments: Appointment[];
   customer: Customer;
-  onClose: () => void;
+  onClose?: () => void;
   onNewBooking: () => void;
   hasUpcoming: boolean;
   hasPast: boolean;
+  isFullPage?: boolean;
+  email?: string;
+  onEmailLookup?: (email: string) => Promise<void>;
+  showEmailForm?: boolean;
+  loading?: boolean;
+  error?: string | null;
 }
 
 export default function AppointmentManagementPopup({ 
@@ -38,19 +44,31 @@ export default function AppointmentManagementPopup({
   onClose, 
   onNewBooking,
   hasUpcoming,
-  hasPast 
+  hasPast,
+  isFullPage = false,
+  email = '',
+  onEmailLookup,
+  showEmailForm = false,
+  loading = false,
+  error: propError = null
 }: AppointmentManagementPopupProps) {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [internalLoading, setInternalLoading] = useState(false);
+  const [error, setError] = useState<string | null>(propError);
   const [success, setSuccess] = useState<string | null>(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [message, setMessage] = useState('');
 
-  const handleReschedule = (appointmentId: string) => {
-    // Open reschedule page in new tab
-    window.open(`/reschedule/${appointmentId}`, '_blank');
+  const handleReschedule = (appointment: Appointment) => {
+    // Redirect to booking page with pre-filled info (matching original behavior)
+    const params = new URLSearchParams({
+      service: appointment.serviceName,
+      serviceId: appointment.id,
+      reschedule: 'true',
+      appointmentId: appointment.id
+    });
+    window.location.href = `/?${params.toString()}`;
   };
 
   const handleAddMessage = (appointment: Appointment) => {
@@ -63,7 +81,7 @@ export default function AppointmentManagementPopup({
     if (!selectedAppointment) return;
 
     try {
-      setLoading(true);
+      setInternalLoading(true);
       const response = await fetch(`/api/appointments/${selectedAppointment.id}`, {
         method: 'PATCH',
         headers: {
@@ -84,7 +102,7 @@ export default function AppointmentManagementPopup({
     } catch (error) {
       setError('Failed to save message');
     } finally {
-      setLoading(false);
+      setInternalLoading(false);
     }
   };
 
@@ -93,7 +111,7 @@ export default function AppointmentManagementPopup({
       return;
     }
 
-    setLoading(true);
+    setInternalLoading(true);
     setError(null);
 
     try {
@@ -116,7 +134,7 @@ export default function AppointmentManagementPopup({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to cancel appointment');
     } finally {
-      setLoading(false);
+      setInternalLoading(false);
     }
   };
 
@@ -145,34 +163,175 @@ export default function AppointmentManagementPopup({
     ['completed', 'cancelled', 'no_show'].includes(apt.status)
   );
 
+  // Email form component for full-page mode
+  const EmailForm = () => {
+    const [emailInput, setEmailInput] = useState(email);
+    
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (onEmailLookup && emailInput.trim()) {
+        onEmailLookup(emailInput.trim());
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div style={{ maxWidth: '450px', margin: '0 auto' }}>
+          <div className="text-center mb-8">
+            <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+              View Your Appointments
+            </h1>
+            <p style={{ color: '#6b7280' }}>
+              Enter your email to see all your bookings
+            </p>
+          </div>
+
+          <div style={{
+            background: 'white',
+            padding: '32px',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+          }}>
+            {propError && (
+              <div style={{
+                marginBottom: '16px',
+                padding: '12px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '6px',
+                color: '#991b1b',
+                fontSize: '14px'
+              }}>
+                {propError}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    outline: 'none'
+                  }}
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#8b7355';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  background: '#8b7355',
+                  color: 'white',
+                  padding: '14px',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  border: 'none',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.7 : 1
+                }}
+                onMouseOver={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.background = '#6d5a42';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.background = '#8b7355';
+                  }
+                }}
+              >
+                {loading ? 'Looking up...' : 'View My Appointments'}
+              </button>
+            </form>
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: '24px' }}>
+            <a
+              href="/"
+              style={{
+                fontSize: '14px',
+                color: '#6b7280',
+                textDecoration: 'none'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.textDecoration = 'underline';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.textDecoration = 'none';
+              }}
+            >
+              ← Back to Booking
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (isFullPage && showEmailForm) {
+    return <EmailForm />;
+  }
+
+  const containerStyle = isFullPage ? {
+    minHeight: '100vh',
+    backgroundColor: '#f9fafb',
+    padding: '48px 16px'
+  } : {
+    position: 'fixed' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1000,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px'
+  };
+
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      zIndex: 1000,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
+    <div style={containerStyle}>
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '12px',
-        maxWidth: '600px',
-        maxHeight: '80vh',
+        borderRadius: isFullPage ? '12px' : '12px',
+        maxWidth: isFullPage ? '800px' : '600px',
+        maxHeight: isFullPage ? 'none' : '80vh',
         width: '100%',
-        overflow: 'hidden',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+        margin: isFullPage ? '0 auto' : '0',
+        overflow: isFullPage ? 'visible' : 'hidden',
+        boxShadow: isFullPage ? '0 1px 3px rgba(0, 0, 0, 0.1)' : '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
       }}>
         {/* Header */}
         <div style={{
           padding: '24px',
           borderBottom: '1px solid #e5e7eb',
-          backgroundColor: '#8b7355'
+          backgroundColor: isFullPage ? 'transparent' : '#8b7355'
         }}>
           <div style={{
             display: 'flex',
@@ -181,9 +340,9 @@ export default function AppointmentManagementPopup({
           }}>
             <div>
               <h2 style={{
-                fontSize: '20px',
+                fontSize: isFullPage ? '32px' : '20px',
                 fontWeight: '600',
-                color: 'white',
+                color: isFullPage ? '#1f2937' : 'white',
                 margin: '0 0 4px 0',
                 fontFamily: 'Oswald, sans-serif',
                 textTransform: 'uppercase',
@@ -193,36 +352,38 @@ export default function AppointmentManagementPopup({
               </h2>
               <p style={{
                 fontSize: '14px',
-                color: 'rgba(255, 255, 255, 0.9)',
+                color: isFullPage ? '#6b7280' : 'rgba(255, 255, 255, 0.9)',
                 margin: 0
               }}>
-                Welcome back, {customer.firstName}!
+                {isFullPage ? email : `Welcome back, ${customer.firstName}!`}
               </p>
             </div>
-            <button
-              onClick={onClose}
-              style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                border: 'none',
-                borderRadius: '6px',
-                color: 'white',
-                fontSize: '18px',
-                width: '32px',
-                height: '32px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-              }}
-            >
-              ×
-            </button>
+            {!isFullPage && onClose && (
+              <button
+                onClick={onClose}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: 'white',
+                  fontSize: '18px',
+                  width: '32px',
+                  height: '32px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                }}
+              >
+                ×
+              </button>
+            )}
           </div>
         </div>
 
@@ -299,8 +460,8 @@ export default function AppointmentManagementPopup({
         {/* Content */}
         <div style={{
           padding: '24px',
-          maxHeight: '400px',
-          overflowY: 'auto'
+          maxHeight: isFullPage ? 'none' : '400px',
+          overflowY: isFullPage ? 'visible' : 'auto'
         }}>
           {activeTab === 'upcoming' && (
             <div>
@@ -429,7 +590,7 @@ export default function AppointmentManagementPopup({
                         {appointment.canModify && (
                           <>
                             <button
-                              onClick={() => handleReschedule(appointment.id)}
+                              onClick={() => handleReschedule(appointment)}
                               style={{
                                 backgroundColor: '#3b82f6',
                                 color: 'white',
@@ -452,30 +613,30 @@ export default function AppointmentManagementPopup({
                             
                             <button
                               onClick={() => cancelAppointment(appointment.id)}
-                              disabled={loading}
+                              disabled={internalLoading || loading}
                               style={{
                                 backgroundColor: '#ef4444',
                                 color: 'white',
                                 border: 'none',
                                 padding: '6px 12px',
                                 borderRadius: '4px',
-                                cursor: loading ? 'not-allowed' : 'pointer',
+                                cursor: (internalLoading || loading) ? 'not-allowed' : 'pointer',
                                 fontSize: '12px',
                                 fontWeight: '500',
-                                opacity: loading ? 0.5 : 1
+                                opacity: (internalLoading || loading) ? 0.5 : 1
                               }}
                               onMouseOver={(e) => {
-                                if (!loading) {
+                                if (!(internalLoading || loading)) {
                                   e.currentTarget.style.backgroundColor = '#dc2626';
                                 }
                               }}
                               onMouseOut={(e) => {
-                                if (!loading) {
+                                if (!(internalLoading || loading)) {
                                   e.currentTarget.style.backgroundColor = '#ef4444';
                                 }
                               }}
                             >
-                              {loading ? 'Cancelling...' : 'Cancel'}
+                              {(internalLoading || loading) ? 'Cancelling...' : 'Cancel'}
                             </button>
                           </>
                         )}
@@ -581,43 +742,86 @@ export default function AppointmentManagementPopup({
         </div>
 
         {/* Footer */}
-        <div style={{
-          padding: '16px 24px',
-          borderTop: '1px solid #e5e7eb',
-          backgroundColor: '#f9fafb',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <p style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            margin: 0
+        {isFullPage ? (
+          <div style={{ textAlign: 'center', marginTop: '32px', paddingTop: '32px', borderTop: '1px solid #e5e7eb' }}>
+            <button
+              onClick={() => {
+                if (onEmailLookup) {
+                  // Reset to email form
+                  window.location.reload();
+                }
+              }}
+              style={{
+                marginRight: '16px',
+                fontSize: '14px',
+                color: '#6b7280',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              Look up another email
+            </button>
+            <a
+              href="/"
+              style={{
+                fontSize: '14px',
+                color: '#8b7355',
+                textDecoration: 'none',
+                fontWeight: '500'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.textDecoration = 'underline';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.textDecoration = 'none';
+              }}
+            >
+              Book New Appointment →
+            </a>
+          </div>
+        ) : (
+          <div style={{
+            padding: '16px 24px',
+            borderTop: '1px solid #e5e7eb',
+            backgroundColor: '#f9fafb',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
-            Need help? Call us at {process.env.NEXT_PUBLIC_SHOP_PHONE}
-          </p>
-          <button
-            onClick={onClose}
-            style={{
-              backgroundColor: '#6b7280',
-              color: 'white',
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '4px',
-              cursor: 'pointer',
+            <p style={{
               fontSize: '12px',
-              fontWeight: '500'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#4b5563';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#6b7280';
-            }}
-          >
-            Close
-          </button>
-        </div>
+              color: '#6b7280',
+              margin: 0
+            }}>
+              Need help? Call us at {process.env.NEXT_PUBLIC_SHOP_PHONE}
+            </p>
+            {onClose && (
+              <button
+                onClick={onClose}
+                style={{
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '500'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#4b5563';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = '#6b7280';
+                }}
+              >
+                Close
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Message Modal */}
@@ -677,17 +881,17 @@ export default function AppointmentManagementPopup({
               </button>
               <button
                 onClick={saveMessage}
-                disabled={loading}
+                disabled={internalLoading || loading}
                 style={{
                   padding: '8px 16px',
-                  background: loading ? '#9ca3af' : '#3b82f6',
+                  background: (internalLoading || loading) ? '#9ca3af' : '#3b82f6',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: loading ? 'not-allowed' : 'pointer'
+                  cursor: (internalLoading || loading) ? 'not-allowed' : 'pointer'
                 }}
               >
-                {loading ? 'Saving...' : 'Save Message'}
+                {(internalLoading || loading) ? 'Saving...' : 'Save Message'}
               </button>
             </div>
           </div>

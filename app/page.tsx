@@ -318,7 +318,7 @@ export default function BookingWidget() {
       });
       
       let customer;
-      if (customerResponse.status === 400) {
+      if (customerResponse.status === 400 || customerResponse.status === 409) {
         // Customer might already exist, try to find by email
         const searchResponse = await fetch(`/api/customers?email=${encodeURIComponent(info.email)}`);
         const searchData = await searchResponse.json();
