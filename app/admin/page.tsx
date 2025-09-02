@@ -8,10 +8,11 @@ import SimplybookSyncSettings from '@/components/SimplybookSyncSettings';
 
 interface AdminState {
   isAuthenticated: boolean;
-  activeTab: 'barbers' | 'services' | 'schedule' | 'customers' | 'settings';
+  activeTab: 'barbers' | 'services' | 'schedule' | 'customers' | 'settings' | 'passwords';
   providers: Provider[];
   services: Service[];
   businessHours: { [day: string]: { start: string; end: string; isOpen: boolean } };
+  providerAccounts: { id: string; name: string; email: string; lastLogin?: Date | null }[];
   isLoading: boolean;
   isSaving: boolean;
   message: { type: 'success' | 'error' | ''; text: string };
@@ -32,6 +33,7 @@ export default function AdminPage() {
       saturday: { start: '09:00', end: '15:00', isOpen: true },
       sunday: { start: '10:00', end: '14:00', isOpen: false }
     },
+    providerAccounts: [],
     isLoading: true,
     isSaving: false,
     message: { type: '', text: '' }
@@ -53,16 +55,32 @@ export default function AdminPage() {
     loadBusinessHours();
   }, []);
 
+  const loadProviderAccounts = async () => {
+    try {
+      const response = await fetch('/api/admin/provider-accounts');
+      if (response.ok) {
+        const data = await response.json();
+        return data.providers || [];
+      }
+      return [];
+    } catch (error) {
+      console.error('Error loading provider accounts:', error);
+      return [];
+    }
+  };
+
   const loadData = async () => {
     try {
-      const [providersData, servicesData] = await Promise.all([
+      const [providersData, servicesData, providerAccountsData] = await Promise.all([
         loadProviders(),
-        loadServices()
+        loadServices(),
+        loadProviderAccounts()
       ]);
       setState(prev => ({
         ...prev,
         providers: providersData,
         services: servicesData,
+        providerAccounts: providerAccountsData,
         isLoading: false
       }));
     } catch (error) {
@@ -349,6 +367,210 @@ export default function AdminPage() {
     }
   };
 
+  // Password Reset Section Component
+  const PasswordResetSection = ({ providerAccounts, onMessage }: { providerAccounts: { id: string; name: string; email: string; lastLogin?: Date | null }[], onMessage: (type: 'success' | 'error', text: string) => void }) => {
+    const [adminPassword, setAdminPassword] = useState('');
+    const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
+    const [isResettingAdmin, setIsResettingAdmin] = useState(false);
+    const [selectedProvider, setSelectedProvider] = useState<string>('');
+    const [newProviderPassword, setNewProviderPassword] = useState('');
+    const [confirmProviderPassword, setConfirmProviderPassword] = useState('');
+    const [isResettingProvider, setIsResettingProvider] = useState(false);
+
+    const resetAdminPassword = async () => {
+      if (!adminPassword || !confirmAdminPassword) {
+        onMessage('error', 'Please fill in all fields');
+        return;
+      }
+
+      if (adminPassword !== confirmAdminPassword) {
+        onMessage('error', 'Passwords do not match');
+        return;
+      }
+
+      if (adminPassword.length < 8) {
+        onMessage('error', 'Password must be at least 8 characters');
+        return;
+      }
+
+      setIsResettingAdmin(true);
+      try {
+        const response = await fetch('/api/admin/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ newPassword: adminPassword })
+        });
+
+        if (response.ok) {
+          onMessage('success', 'Admin password updated successfully!');
+          setAdminPassword('');
+          setConfirmAdminPassword('');
+        } else {
+          const data = await response.json();
+          onMessage('error', data.error || 'Failed to update admin password');
+        }
+      } catch (error) {
+        onMessage('error', 'Failed to update admin password');
+      } finally {
+        setIsResettingAdmin(false);
+      }
+    };
+
+    const resetProviderPassword = async () => {
+      if (!selectedProvider || !newProviderPassword || !confirmProviderPassword) {
+        onMessage('error', 'Please fill in all fields');
+        return;
+      }
+
+      if (newProviderPassword !== confirmProviderPassword) {
+        onMessage('error', 'Passwords do not match');
+        return;
+      }
+
+      if (newProviderPassword.length < 8) {
+        onMessage('error', 'Password must be at least 8 characters');
+        return;
+      }
+
+      setIsResettingProvider(true);
+      try {
+        const response = await fetch('/api/providers/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            providerId: selectedProvider, 
+            newPassword: newProviderPassword 
+          })
+        });
+
+        if (response.ok) {
+          onMessage('success', 'Provider password updated successfully!');
+          setSelectedProvider('');
+          setNewProviderPassword('');
+          setConfirmProviderPassword('');
+        } else {
+          const data = await response.json();
+          onMessage('error', data.error || 'Failed to update provider password');
+        }
+      } catch (error) {
+        onMessage('error', 'Failed to update provider password');
+      } finally {
+        setIsResettingProvider(false);
+      }
+    };
+
+    return (
+      <div className="passwords-section">
+        <div className="section-header">
+          <h2>Password Management</h2>
+        </div>
+        
+        <div className="password-cards">
+          {/* Admin Password Reset */}
+          <div className="password-card">
+            <h3>Admin Password Reset</h3>
+            <p className="card-description">
+              Change the admin password for this dashboard. This will update the environment variable.
+            </p>
+            
+            <div className="password-form">
+              <div className="form-group">
+                <label>New Admin Password</label>
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="Enter new admin password"
+                  className="password-input"
+                  disabled={isResettingAdmin}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmAdminPassword}
+                  onChange={(e) => setConfirmAdminPassword(e.target.value)}
+                  placeholder="Confirm new admin password"
+                  className="password-input"
+                  disabled={isResettingAdmin}
+                />
+              </div>
+              
+              <button
+                onClick={resetAdminPassword}
+                disabled={isResettingAdmin}
+                className="reset-button admin-reset"
+              >
+                {isResettingAdmin ? 'Updating...' : 'Update Admin Password'}
+              </button>
+            </div>
+          </div>
+
+          {/* Provider Password Reset */}
+          <div className="password-card">
+            <h3>Barber Password Reset</h3>
+            <p className="card-description">
+              Reset passwords for individual barber accounts. They can log in with their email and the new password.
+            </p>
+            
+            <div className="password-form">
+              <div className="form-group">
+                <label>Select Barber</label>
+                <select
+                  value={selectedProvider}
+                  onChange={(e) => setSelectedProvider(e.target.value)}
+                  className="provider-select"
+                  disabled={isResettingProvider}
+                >
+                  <option value="">Choose a barber...</option>
+                  {providerAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} ({account.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label>New Password</label>
+                <input
+                  type="password"
+                  value={newProviderPassword}
+                  onChange={(e) => setNewProviderPassword(e.target.value)}
+                  placeholder="Enter new password for barber"
+                  className="password-input"
+                  disabled={isResettingProvider}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Confirm Password</label>
+                <input
+                  type="password"
+                  value={confirmProviderPassword}
+                  onChange={(e) => setConfirmProviderPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="password-input"
+                  disabled={isResettingProvider}
+                />
+              </div>
+              
+              <button
+                onClick={resetProviderPassword}
+                disabled={isResettingProvider || !selectedProvider}
+                className="reset-button provider-reset"
+              >
+                {isResettingProvider ? 'Updating...' : 'Reset Barber Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (!state.isAuthenticated) {
     return (
       <div className="admin-login">
@@ -464,6 +686,12 @@ export default function AdminPage() {
           onClick={() => setState(prev => ({ ...prev, activeTab: 'settings' }))}
         >
           Settings
+        </button>
+        <button
+          className={`tab ${state.activeTab === 'passwords' ? 'active' : ''}`}
+          onClick={() => setState(prev => ({ ...prev, activeTab: 'passwords' }))}
+        >
+          Passwords
         </button>
       </div>
 
@@ -796,6 +1024,18 @@ export default function AdminPage() {
               <div className="settings-section">
                 <SimplybookSyncSettings />
               </div>
+            )}
+
+            {state.activeTab === 'passwords' && (
+              <PasswordResetSection 
+                providerAccounts={state.providerAccounts}
+                onMessage={(type, text) => {
+                  setState(prev => ({ ...prev, message: { type, text } }));
+                  setTimeout(() => {
+                    setState(prev => ({ ...prev, message: { type: '', text: '' } }));
+                  }, 3000);
+                }}
+              />
             )}
           </>
         )}
@@ -1381,6 +1621,111 @@ export default function AdminPage() {
           color: #666;
         }
         
+        /* Password Reset Styles */
+        .passwords-section {
+          padding: 0;
+        }
+        
+        .password-cards {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+          gap: 20px;
+        }
+        
+        .password-card {
+          background: #f9f9f9;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          padding: 25px;
+        }
+        
+        .password-card h3 {
+          font-family: 'Oswald', sans-serif;
+          color: #2c2c2c;
+          margin-bottom: 8px;
+          font-size: 20px;
+        }
+        
+        .card-description {
+          color: #666;
+          margin-bottom: 20px;
+          line-height: 1.5;
+          font-size: 14px;
+        }
+        
+        .password-form {
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+        }
+        
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        
+        .form-group label {
+          font-weight: 600;
+          color: #333;
+          font-size: 14px;
+        }
+        
+        .password-input,
+        .provider-select {
+          padding: 12px;
+          border: 2px solid #ddd;
+          border-radius: 6px;
+          font-size: 14px;
+          transition: border-color 0.2s;
+        }
+        
+        .password-input:focus,
+        .provider-select:focus {
+          outline: none;
+          border-color: #8b7355;
+        }
+        
+        .password-input:disabled,
+        .provider-select:disabled {
+          background: #f5f5f5;
+          cursor: not-allowed;
+        }
+        
+        .reset-button {
+          padding: 12px 20px;
+          border: none;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background-color 0.2s;
+          margin-top: 10px;
+        }
+        
+        .admin-reset {
+          background: #c41e3a;
+          color: white;
+        }
+        
+        .admin-reset:hover:not(:disabled) {
+          background: #a01729;
+        }
+        
+        .provider-reset {
+          background: #8b7355;
+          color: white;
+        }
+        
+        .provider-reset:hover:not(:disabled) {
+          background: #6d5a42;
+        }
+        
+        .reset-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
         /* Mobile responsive */
         @media (max-width: 768px) {
           .header-actions {
@@ -1416,6 +1761,10 @@ export default function AdminPage() {
           
           .time-input {
             min-width: 100px;
+          }
+          
+          .password-cards {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
