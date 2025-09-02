@@ -71,6 +71,16 @@ export default function AppointmentManagementPopup({
     window.location.href = `/?${params.toString()}`;
   };
 
+  const handleRebook = (appointment: Appointment) => {
+    // Redirect to booking page with the same service pre-selected
+    const params = new URLSearchParams({
+      service: appointment.serviceName,
+      provider: appointment.providerName,
+      rebook: 'true'
+    });
+    window.location.href = `/?${params.toString()}`;
+  };
+
   const handleAddMessage = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setMessage(appointment.notes || '');
@@ -732,6 +742,33 @@ export default function AppointmentManagementPopup({
                         >
                           {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                         </span>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        marginTop: '8px'
+                      }}>
+                        <button
+                          onClick={() => handleRebook(appointment)}
+                          style={{
+                            backgroundColor: '#8b7355',
+                            color: 'white',
+                            border: 'none',
+                            padding: '4px 10px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            fontWeight: '500'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.backgroundColor = '#6d5a42';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.backgroundColor = '#8b7355';
+                          }}
+                        >
+                          Book Again
+                        </button>
                       </div>
                     </div>
                   ))}
