@@ -19,6 +19,8 @@ interface AdminState {
 }
 
 export default function AdminPage() {
+  console.log('🚀 Admin Dashboard component mounting...');
+  
   const [state, setState] = useState<AdminState>({
     isAuthenticated: false,
     activeTab: 'barbers',
@@ -43,14 +45,20 @@ export default function AdminPage() {
 
   // Load data on mount
   useEffect(() => {
+    console.log('🔄 Admin useEffect running...');
+    
     // Check if user has provider token - redirect them to provider portal
     const providerToken = localStorage.getItem('providerToken');
+    console.log('🔑 Provider token found:', !!providerToken);
+    
     if (providerToken) {
+      console.log('⚠️ Redirecting to provider portal...');
       alert('Please use the Provider Portal at /providers for your account access.');
       window.location.href = '/providers';
       return;
     }
     
+    console.log('📊 Loading admin data...');
     loadData();
     loadBusinessHours();
   }, []);
@@ -806,6 +814,7 @@ export default function AdminPage() {
   };
 
   if (!state.isAuthenticated) {
+    console.log('🔒 Showing admin login screen...');
     return (
       <div className="admin-login">
         <div className="login-container">
@@ -883,6 +892,9 @@ export default function AdminPage() {
     );
   }
 
+  console.log('✅ Rendering authenticated admin dashboard...');
+  console.log('📋 Current providerAccounts in state:', state.providerAccounts);
+  
   return (
     <div className="admin-dashboard">
       <div className="admin-header">
