@@ -1624,106 +1624,198 @@ export default function AdminPage() {
         /* Password Reset Styles */
         .passwords-section {
           padding: 0;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+        
+        .passwords-section .section-header {
+          margin-bottom: 30px;
+          padding-bottom: 15px;
+          border-bottom: 2px solid #8b7355;
+        }
+        
+        .passwords-section .section-header h2 {
+          font-family: 'Oswald', sans-serif;
+          font-size: 28px;
+          color: #2c2c2c;
+          text-transform: uppercase;
+          letter-spacing: 1px;
         }
         
         .password-cards {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+          gap: 30px;
         }
         
         .password-card {
-          background: #f9f9f9;
-          border: 2px solid #e0e0e0;
-          border-radius: 8px;
-          padding: 25px;
+          background: white;
+          border: 2px solid #8b7355;
+          border-radius: 12px;
+          padding: 30px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .password-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }
         
         .password-card h3 {
           font-family: 'Oswald', sans-serif;
-          color: #2c2c2c;
-          margin-bottom: 8px;
-          font-size: 20px;
+          color: #c41e3a;
+          margin-bottom: 12px;
+          font-size: 22px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
         
         .card-description {
           color: #666;
-          margin-bottom: 20px;
-          line-height: 1.5;
-          font-size: 14px;
+          margin-bottom: 25px;
+          line-height: 1.6;
+          font-size: 15px;
+          background: #f8f8f8;
+          padding: 15px;
+          border-radius: 8px;
+          border-left: 4px solid #8b7355;
         }
         
         .password-form {
           display: flex;
           flex-direction: column;
-          gap: 15px;
+          gap: 20px;
         }
         
         .form-group {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          gap: 8px;
         }
         
         .form-group label {
-          font-weight: 600;
-          color: #333;
+          font-family: 'Oswald', sans-serif;
+          font-weight: 500;
+          color: #2c2c2c;
           font-size: 14px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
         }
         
         .password-input,
         .provider-select {
-          padding: 12px;
-          border: 2px solid #ddd;
-          border-radius: 6px;
-          font-size: 14px;
-          transition: border-color 0.2s;
+          width: 100%;
+          padding: 14px 16px;
+          border: 2px solid #e0e0e0;
+          border-radius: 8px;
+          font-size: 15px;
+          font-family: inherit;
+          transition: all 0.3s ease;
+          background: white;
+          box-sizing: border-box;
         }
         
         .password-input:focus,
         .provider-select:focus {
           outline: none;
           border-color: #8b7355;
+          box-shadow: 0 0 0 3px rgba(139, 115, 85, 0.1);
+          transform: translateY(-1px);
         }
         
         .password-input:disabled,
         .provider-select:disabled {
           background: #f5f5f5;
+          color: #999;
           cursor: not-allowed;
+          border-color: #ddd;
+        }
+        
+        .provider-select {
+          cursor: pointer;
+          appearance: none;
+          background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+          background-repeat: no-repeat;
+          background-position: right 12px center;
+          background-size: 18px;
+          padding-right: 40px;
+        }
+        
+        .provider-select option {
+          padding: 10px;
+          background: white;
+          color: #333;
         }
         
         .reset-button {
-          padding: 12px 20px;
+          padding: 16px 24px;
           border: none;
-          border-radius: 6px;
-          font-size: 14px;
+          border-radius: 8px;
+          font-size: 15px;
           font-weight: 600;
+          font-family: 'Oswald', sans-serif;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
           cursor: pointer;
-          transition: background-color 0.2s;
-          margin-top: 10px;
+          transition: all 0.3s ease;
+          margin-top: 15px;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .reset-button::before {
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 0;
+          height: 0;
+          background: rgba(255,255,255,0.2);
+          border-radius: 50%;
+          transform: translate(-50%, -50%);
+          transition: width 0.3s, height 0.3s;
+        }
+        
+        .reset-button:hover::before {
+          width: 300px;
+          height: 300px;
         }
         
         .admin-reset {
-          background: #c41e3a;
+          background: linear-gradient(135deg, #c41e3a 0%, #a01729 100%);
           color: white;
+          border: 2px solid transparent;
         }
         
         .admin-reset:hover:not(:disabled) {
-          background: #a01729;
+          background: linear-gradient(135deg, #a01729 0%, #8b1423 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(196, 30, 58, 0.3);
         }
         
         .provider-reset {
-          background: #8b7355;
+          background: linear-gradient(135deg, #8b7355 0%, #6d5a42 100%);
           color: white;
+          border: 2px solid transparent;
         }
         
         .provider-reset:hover:not(:disabled) {
-          background: #6d5a42;
+          background: linear-gradient(135deg, #6d5a42 0%, #5a4736 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(139, 115, 85, 0.3);
         }
         
         .reset-button:disabled {
-          opacity: 0.6;
+          opacity: 0.5;
           cursor: not-allowed;
+          transform: none !important;
+          box-shadow: none !important;
+        }
+        
+        .reset-button:disabled::before {
+          display: none;
         }
 
         /* Mobile responsive */
@@ -1765,6 +1857,24 @@ export default function AdminPage() {
           
           .password-cards {
             grid-template-columns: 1fr;
+            gap: 20px;
+          }
+          
+          .password-card {
+            padding: 20px;
+          }
+          
+          .password-card h3 {
+            font-size: 20px;
+          }
+          
+          .card-description {
+            font-size: 14px;
+            padding: 12px;
+          }
+          
+          .provider-select {
+            background-size: 16px;
           }
         }
       `}</style>
