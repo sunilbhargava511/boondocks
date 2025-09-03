@@ -57,14 +57,20 @@ export default function AdminPage() {
 
   const loadProviderAccounts = async () => {
     try {
+      console.log('🔍 Loading provider accounts...');
       const response = await fetch('/api/admin/provider-accounts');
+      console.log('📡 Provider accounts response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('📋 Provider accounts data:', data);
+        console.log('👥 Number of providers found:', data.providers?.length || 0);
         return data.providers || [];
       }
+      console.error('❌ Failed to load provider accounts:', response.status, response.statusText);
       return [];
     } catch (error) {
-      console.error('Error loading provider accounts:', error);
+      console.error('💥 Error loading provider accounts:', error);
       return [];
     }
   };
@@ -76,6 +82,7 @@ export default function AdminPage() {
         loadServices(),
         loadProviderAccounts()
       ]);
+      console.log('🔄 Setting state with provider accounts:', providerAccountsData);
       setState(prev => ({
         ...prev,
         providers: providersData,
@@ -526,11 +533,14 @@ export default function AdminPage() {
                   disabled={isResettingProvider}
                 >
                   <option value="">Choose a barber...</option>
-                  {providerAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name} ({account.email})
-                    </option>
-                  ))}
+                  {providerAccounts.map((account) => {
+                    console.log('🔄 Rendering provider option:', account);
+                    return (
+                      <option key={account.id} value={account.id}>
+                        {account.name} ({account.email})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               
