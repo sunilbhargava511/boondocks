@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         providerId: true,
-        provider_id: true,
         email: true,
         firstName: true,
         lastName: true,
@@ -25,7 +24,7 @@ export async function GET(req: NextRequest) {
 
     // Transform to match the expected format for the admin dropdown
     const providers = providerAccounts.map(account => ({
-      id: account.provider_id || account.id,
+      id: account.providerId || account.id,
       name: `${account.firstName} ${account.lastName}`,
       email: account.email,
       lastLogin: account.lastLogin
