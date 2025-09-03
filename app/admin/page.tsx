@@ -1298,6 +1298,14 @@ export default function AdminPage() {
           border-radius: 4px;
           cursor: pointer;
           font-weight: 600;
+          min-height: 44px;
+          -webkit-tap-highlight-color: transparent;
+          transition: all 0.2s ease;
+        }
+        
+        .logout-button:hover {
+          background: #a01729;
+          transform: translateY(-1px);
         }
         
         .admin-tabs {
@@ -1307,6 +1315,7 @@ export default function AdminPage() {
           background: white;
           padding: 10px;
           border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         
         .tab {
@@ -1317,6 +1326,11 @@ export default function AdminPage() {
           cursor: pointer;
           font-weight: 600;
           transition: all 0.2s;
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          -webkit-tap-highlight-color: transparent;
         }
         
         .tab.active {
@@ -1377,6 +1391,14 @@ export default function AdminPage() {
           border-radius: 4px;
           cursor: pointer;
           font-weight: 600;
+          min-height: 44px;
+          -webkit-tap-highlight-color: transparent;
+          transition: all 0.2s ease;
+        }
+        
+        .add-button:hover:not(:disabled) {
+          background: #45a049;
+          transform: translateY(-1px);
         }
         
         .save-button-inline {
@@ -1387,7 +1409,9 @@ export default function AdminPage() {
           border-radius: 4px;
           cursor: pointer;
           font-weight: 600;
-          transition: background 0.2s;
+          transition: all 0.2s ease;
+          min-height: 44px;
+          -webkit-tap-highlight-color: transparent;
         }
         
         .save-button-inline:hover:not(:disabled) {
@@ -2044,6 +2068,49 @@ export default function AdminPage() {
 
         /* Mobile responsive */
         @media (max-width: 768px) {
+          .admin-dashboard {
+            padding: 10px;
+          }
+          
+          .admin-header {
+            padding: 15px;
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+          }
+          
+          .admin-header h1 {
+            font-size: 28px;
+          }
+          
+          .admin-tabs {
+            padding: 8px;
+            gap: 5px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          
+          .tab {
+            padding: 10px 16px;
+            font-size: 14px;
+            white-space: nowrap;
+            flex-shrink: 0;
+          }
+          
+          .admin-content {
+            padding: 15px;
+          }
+          
+          .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+          }
+          
+          .section-header h2 {
+            font-size: 20px;
+          }
+          
           .header-actions {
             flex-direction: column;
             width: 100%;
@@ -2052,6 +2119,62 @@ export default function AdminPage() {
           
           .save-button-inline,
           .add-button {
+            width: 100%;
+            padding: 12px;
+          }
+          
+          .barber-card,
+          .service-card,
+          .business-hours-card,
+          .analytics-card {
+            margin-bottom: 15px;
+            padding: 15px;
+          }
+          
+          .barber-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+          }
+          
+          .name-input {
+            margin-right: 0;
+            margin-bottom: 10px;
+          }
+          
+          .availability-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .day-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 5px;
+          }
+          
+          .day-row label {
+            width: auto;
+            margin-bottom: 5px;
+          }
+          
+          .service-table-header {
+            display: none;
+          }
+          
+          .service-row {
+            flex-direction: column;
+            gap: 10px;
+            align-items: stretch;
+          }
+          
+          .service-name,
+          .service-duration,
+          .service-price,
+          .category-select {
+            width: 100%;
+          }
+          
+          .input-with-label {
             width: 100%;
           }
           
@@ -2063,6 +2186,7 @@ export default function AdminPage() {
           .hours-row {
             grid-template-columns: 1fr;
             gap: 10px;
+            padding: 12px;
           }
           
           .day-label {
@@ -2072,16 +2196,17 @@ export default function AdminPage() {
           
           .time-inputs {
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
           }
           
           .time-input {
-            min-width: 100px;
+            min-width: 90px;
+            flex: 1;
           }
           
           .password-cards {
             grid-template-columns: 1fr;
-            gap: 20px;
+            gap: 15px;
           }
           
           .password-card {
@@ -2089,16 +2214,140 @@ export default function AdminPage() {
           }
           
           .password-card h3 {
-            font-size: 20px;
+            font-size: 18px;
           }
           
           .card-description {
             font-size: 14px;
             padding: 12px;
+            margin-bottom: 20px;
           }
           
           .provider-select {
             background-size: 16px;
+          }
+          
+          .reset-button {
+            padding: 14px 20px;
+            font-size: 14px;
+          }
+        }
+        
+        /* iPhone and small mobile devices */
+        @media (max-width: 480px) {
+          .admin-dashboard {
+            padding: 8px;
+          }
+          
+          .admin-header {
+            padding: 12px;
+          }
+          
+          .admin-header h1 {
+            font-size: 24px;
+          }
+          
+          .logout-button {
+            padding: 10px 16px;
+            font-size: 14px;
+          }
+          
+          .admin-tabs {
+            padding: 5px;
+            margin-bottom: 15px;
+          }
+          
+          .tab {
+            padding: 8px 12px;
+            font-size: 13px;
+            min-width: 80px;
+          }
+          
+          .admin-content {
+            padding: 10px;
+          }
+          
+          .section-header h2 {
+            font-size: 18px;
+          }
+          
+          .barber-card,
+          .password-card,
+          .business-hours-card {
+            padding: 12px;
+          }
+          
+          .name-input {
+            font-size: 16px;
+            padding: 10px;
+          }
+          
+          .description-input {
+            padding: 10px;
+            font-size: 16px;
+          }
+          
+          .service-name,
+          .service-duration,
+          .service-price,
+          .category-select {
+            font-size: 16px;
+            padding: 10px;
+          }
+          
+          .password-input,
+          .provider-select {
+            font-size: 16px;
+            padding: 12px 14px;
+          }
+          
+          .time-input {
+            font-size: 16px;
+            padding: 10px;
+            min-width: 80px;
+          }
+          
+          .reset-button {
+            font-size: 13px;
+            padding: 12px 18px;
+          }
+          
+          .message {
+            padding: 12px;
+            font-size: 14px;
+          }
+          
+          .checkbox-label {
+            font-size: 14px;
+          }
+          
+          .form-group label {
+            font-size: 13px;
+          }
+          
+          .card-description {
+            font-size: 13px;
+            padding: 10px;
+          }
+        }
+        
+        /* iPhone 15 Pro Max and similar large phones */
+        @media (max-width: 430px) and (min-width: 393px) {
+          .admin-tabs {
+            justify-content: flex-start;
+          }
+          
+          .tab {
+            min-width: 70px;
+          }
+          
+          .time-inputs {
+            justify-content: space-between;
+          }
+          
+          .time-input {
+            width: calc(50% - 4px);
+            min-width: 85px;
           }
         }
       `}</style>
