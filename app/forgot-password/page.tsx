@@ -10,6 +10,8 @@ const ForgotPasswordPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resetLink, setResetLink] = useState<string | null>(null);
+  const [showLinkDirectly, setShowLinkDirectly] = useState(false);
 
   const handleResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +34,12 @@ const ForgotPasswordPage: React.FC = () => {
         throw new Error(data.error || 'Failed to send reset email');
       }
 
+      // Check if we should show the link directly
+      if (data.showLinkDirectly && data.resetLink) {
+        setResetLink(data.resetLink);
+        setShowLinkDirectly(true);
+      }
+
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send reset email');
@@ -46,19 +54,54 @@ const ForgotPasswordPage: React.FC = () => {
         <div className="forgot-container">
           <div className="success-message">
             <div className="success-icon">✅</div>
-            <h2>Check Your Email</h2>
-            <p>We've sent password reset instructions to:</p>
-            <p className="email-display">{email}</p>
-            <div className="instructions">
-              <p>Please check your email and follow the instructions to reset your password.</p>
-              <p>The link will expire in 1 hour for security reasons.</p>
-            </div>
+            {showLinkDirectly ? (
+              <>
+                <h2>Password Reset Link</h2>
+                <div className="temp-notice">
+                  <p className="notice-header">⚠️ Temporary Setup</p>
+                  <p>Email service is not configured yet. Please use the link below to reset your password:</p>
+                </div>
+                <div className="reset-link-container">
+                  <p className="link-label">Click this link to reset your password:</p>
+                  <a href={resetLink} className="reset-link" target="_blank" rel="noopener noreferrer">
+                    {resetLink}
+                  </a>
+                  <button 
+                    className="copy-button"
+                    onClick={() => {
+                      if (resetLink) {
+                        navigator.clipboard.writeText(resetLink);
+                        alert('Link copied to clipboard!');
+                      }
+                    }}
+                  >
+                    📋 Copy Link
+                  </button>
+                </div>
+                <div className="instructions">
+                  <p>This link will expire in 1 hour for security reasons.</p>
+                  <p>Once email is properly configured, this link will be sent to your email automatically.</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>Check Your Email</h2>
+                <p>We've sent password reset instructions to:</p>
+                <p className="email-display">{email}</p>
+                <div className="instructions">
+                  <p>Please check your email and follow the instructions to reset your password.</p>
+                  <p>The link will expire in 1 hour for security reasons.</p>
+                </div>
+              </>
+            )}
             <div className="actions">
               <a href="/login" className="login-button">Back to Login</a>
             </div>
-            <p className="help-text">
-              Didn't receive the email? Check your spam folder or try again.
-            </p>
+            {!showLinkDirectly && (
+              <p className="help-text">
+                Didn't receive the email? Check your spam folder or try again.
+              </p>
+            )}
           </div>
         </div>
 
@@ -124,6 +167,83 @@ const ForgotPasswordPage: React.FC = () => {
             margin-top: 20px;
             font-size: 12px;
             color: #999;
+          }
+
+          .temp-notice {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+          }
+
+          .notice-header {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 8px;
+            font-size: 16px;
+          }
+
+          .temp-notice p {
+            margin: 5px 0;
+            color: #856404;
+            font-size: 14px;
+          }
+
+          .reset-link-container {
+            background: #f8f9fa;
+            border: 2px dashed #8b7355;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+          }
+
+          .link-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+          }
+
+          .reset-link {
+            display: block;
+            word-break: break-all;
+            color: #c41e3a;
+            font-size: 13px;
+            font-family: monospace;
+            background: white;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+            text-decoration: none;
+            transition: all 0.3s ease;
+          }
+
+          .reset-link:hover {
+            background: #f5f5f5;
+            border-color: #c41e3a;
+          }
+
+          .copy-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #8b7355;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-family: 'Oswald', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+          }
+
+          .copy-button:hover {
+            background: #6d5a42;
+            transform: translateY(-1px);
           }
         `}</style>
       </div>

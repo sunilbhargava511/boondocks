@@ -69,21 +69,37 @@ async function handleResetRequest(email: string, role: string) {
   console.log('   To:', email.toLowerCase());
   console.log('   Reset link:', resetLink);
   
-  // Send the email (falls back to console logging if not configured)
-  const emailSent = await sendPasswordResetEmail(email.toLowerCase(), resetLink, role as 'customer' | 'provider');
+  // Check if email service is configured
+  const isEmailConfigured = !!process.env.RESEND_API_KEY && !!process.env.FROM_EMAIL?.includes('@');
   
-  if (!emailSent) {
-    console.error('❌ Failed to send password reset email!');
-    console.warn('Failed to send password reset email, but continuing...');
-  } else {
-    console.log('✅ Password reset email sent successfully to:', email);
-  }
+  if (isEmailConfigured) {
+    // Send the email (falls back to console logging if not configured)
+    const emailSent = await sendPasswordResetEmail(email.toLowerCase(), resetLink, role as 'customer' | 'provider');
+    
+    if (!emailSent) {
+      console.error('❌ Failed to send password reset email!');
+      console.warn('Failed to send password reset email, but continuing...');
+    } else {
+      console.log('✅ Password reset email sent successfully to:', email);
+    }
 
-  return NextResponse.json({ 
-    message: 'Password reset instructions have been sent to your email',
-    // In development only, include the token for testing
-    ...(process.env.NODE_ENV === 'development' && { resetToken, resetLink })
-  });
+    return NextResponse.json({ 
+      message: 'Password reset instructions have been sent to your email',
+      // In development only, include the token for testing
+      ...(process.env.NODE_ENV === 'development' && { resetToken, resetLink })
+    });
+  } else {
+    // Email not configured - return the link directly
+    console.log('📧 Email service not configured - returning link directly');
+    console.log('🔗 Reset link:', resetLink);
+    
+    return NextResponse.json({ 
+      message: 'Email service not configured. Use the link below to reset your password:',
+      resetLink,
+      resetToken,
+      showLinkDirectly: true
+    });
+  }
 }
 
 async function handlePasswordReset(token: string, newPassword: string) {
