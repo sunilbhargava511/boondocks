@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import ProviderAppointments from './ProviderAppointments';
 import ProviderAvailability from './ProviderAvailability';
+import ProviderCalendar from './ProviderCalendar';
+import ProviderCustomerApprovals from './ProviderCustomerApprovals';
+import ProviderNaughtyList from './ProviderNaughtyList';
 
 interface ProviderDashboardProps {
   provider: any;
@@ -10,7 +13,7 @@ interface ProviderDashboardProps {
 }
 
 export default function ProviderDashboard({ provider, onLogout }: ProviderDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'appointments' | 'availability' | 'profile'>('appointments');
+  const [activeTab, setActiveTab] = useState<'appointments' | 'calendar' | 'availability' | 'customers' | 'naughty' | 'profile'>('appointments');
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
@@ -77,10 +80,28 @@ export default function ProviderDashboard({ provider, onLogout }: ProviderDashbo
           Appointments
         </button>
         <button 
+          className={`tab ${activeTab === 'calendar' ? 'active' : ''}`}
+          onClick={() => setActiveTab('calendar')}
+        >
+          Calendar
+        </button>
+        <button 
           className={`tab ${activeTab === 'availability' ? 'active' : ''}`}
           onClick={() => setActiveTab('availability')}
         >
           Availability
+        </button>
+        <button 
+          className={`tab ${activeTab === 'customers' ? 'active' : ''}`}
+          onClick={() => setActiveTab('customers')}
+        >
+          Customers
+        </button>
+        <button 
+          className={`tab ${activeTab === 'naughty' ? 'active' : ''}`}
+          onClick={() => setActiveTab('naughty')}
+        >
+          No-Shows
         </button>
         <button 
           className={`tab ${activeTab === 'profile' ? 'active' : ''}`}
@@ -95,8 +116,17 @@ export default function ProviderDashboard({ provider, onLogout }: ProviderDashbo
         {activeTab === 'appointments' && (
           <ProviderAppointments provider={provider} />
         )}
+        {activeTab === 'calendar' && (
+          <ProviderCalendar provider={provider} />
+        )}
         {activeTab === 'availability' && (
           <ProviderAvailability provider={provider} />
+        )}
+        {activeTab === 'customers' && (
+          <ProviderCustomerApprovals provider={provider} />
+        )}
+        {activeTab === 'naughty' && (
+          <ProviderNaughtyList provider={provider} />
         )}
         {activeTab === 'profile' && (
           <div className="profile-section">

@@ -37,6 +37,9 @@ model Customer {
   preferences CustomerPreference?
   tags        CustomerTag[]
   appointments Appointment[]
+  providerApprovals ProviderCustomerApproval[]
+  noShowIncidents NoShowIncident[]
+  naughtyListEntries ProviderNaughtyList[]
 
   @@map("customers")
 }
@@ -132,6 +135,9 @@ model ProviderAccount {
   phone             String?
   isActive          Boolean  @default(true) @map("is_active")
   role              String   @default("provider") // provider or admin
+  isSelective       Boolean  @default(false) @map("is_selective") // If true, only approved customers can book
+  noShowThreshold   Int      @default(3) @map("no_show_threshold") // Number of no-shows before naughty list
+  enableNaughtyList Boolean  @default(true) @map("enable_naughty_list") // Enable automatic naughty list
   lastLogin         DateTime? @map("last_login")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
@@ -139,6 +145,9 @@ model ProviderAccount {
   // Relations
   unavailableDates  ProviderUnavailability[]
   notifications     ProviderNotification[]
+  approvedCustomers ProviderCustomerApproval[]
+  naughtyListEntries ProviderNaughtyList[]
+  noShowIncidents   NoShowIncident[]
   
   @@map("provider_accounts")
 }
@@ -172,4 +181,72 @@ model ProviderNotification {
   
   @@index([providerId, isRead])
   @@map("provider_notifications")
+}
+
+// Provider Customer Approval (for selective providers)
+model ProviderCustomerApproval {
+  id          String   @id @default(uuid())
+  providerId  String   @map("provider_id")
+  provider    ProviderAccount @relation(fields: [providerId], references: [providerId], onDelete: Cascade)
+  customerId  String   @map("customer_id")
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status      String   @default("approved") // approved, pending, rejected
+  notes       String?  // Provider's notes about this customer
+  approvedAt  DateTime @default(now()) @map("approved_at")
+  approvedBy  String   @map("approved_by") // Provider who approved
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@unique([providerId, customerId])
+  @@index([providerId, status])
+  @@map("provider_customer_approvals")
+}
+
+// No-Show Incident Tracking
+model NoShowIncident {
+  id            String   @id @default(uuid())
+  appointmentId String   @map("appointment_id")
+  customerId    String   @map("customer_id")
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  providerId    String   @map("provider_id")
+  provider      ProviderAccount @relation(fields: [providerId], references: [providerId], onDelete: Cascade)
+  appointmentDate DateTime @map("appointment_date")
+  serviceName   String   @map("service_name")
+  customerEmail String   @map("customer_email")
+  customerPhone String   @map("customer_phone")
+  notes         String?  // Provider's notes about the no-show
+  markedBy      String   @map("marked_by") // Provider who marked it
+  createdAt     DateTime @default(now()) @map("created_at")
+  
+  @@index([customerId, providerId])
+  @@index([customerEmail])
+  @@index([customerPhone])
+  @@map("no_show_incidents")
+}
+
+// Provider Naughty List (blocked customers)
+model ProviderNaughtyList {
+  id            String   @id @default(uuid())
+  providerId    String   @map("provider_id")
+  provider      ProviderAccount @relation(fields: [providerId], references: [providerId], onDelete: Cascade)
+  customerId    String?  @map("customer_id") // May be null if customer was deleted
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  blockedEmail  String   @map("blocked_email")
+  blockedPhone  String   @map("blocked_phone")
+  customerName  String   @map("customer_name") // Store name in case customer is deleted
+  reason        String   @default("excessive_noshows") // excessive_noshows, manual_block, etc.
+  noShowCount   Int      @default(0) @map("no_show_count") // Count at time of blocking
+  notes         String?  // Provider's notes
+  blockedBy     String   @map("blocked_by") // Provider who blocked them
+  isAutomatic   Boolean  @default(false) @map("is_automatic") // Was this automatic or manual?
+  canAppeal     Boolean  @default(true) @map("can_appeal") // Can customer appeal this block?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  @@unique([providerId, blockedEmail])
+  @@unique([providerId, blockedPhone])
+  @@index([providerId, reason])
+  @@index([blockedEmail])
+  @@index([blockedPhone])
+  @@map("provider_naughty_list")
 }

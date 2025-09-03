@@ -146,6 +146,25 @@ export async function PUT(req: NextRequest) {
         notificationMessage = 'Your appointment has been confirmed';
         break;
       
+      case 'reschedule':
+        if (!data.newDateTime) {
+          return NextResponse.json(
+            { error: 'New date and time are required for rescheduling' },
+            { status: 400 }
+          );
+        }
+        updateData.appointmentDate = new Date(data.newDateTime);
+        updateData.status = 'confirmed'; // Keep confirmed status after reschedule
+        const oldDate = new Date(appointment.appointmentDate).toLocaleDateString();
+        const newDate = new Date(data.newDateTime).toLocaleDateString();
+        const oldTime = new Date(appointment.appointmentDate).toLocaleTimeString();
+        const newTime = new Date(data.newDateTime).toLocaleTimeString();
+        updateData.notes = appointment.notes ? 
+          `${appointment.notes} | Rescheduled from ${oldDate} ${oldTime} to ${newDate} ${newTime}` : 
+          `Rescheduled from ${oldDate} ${oldTime} to ${newDate} ${newTime}`;
+        notificationMessage = `Your appointment has been rescheduled to ${newDate} at ${newTime}`;
+        break;
+      
       default:
         return NextResponse.json(
           { error: 'Invalid action' },

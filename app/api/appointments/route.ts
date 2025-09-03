@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { customerManager } from '@/lib/services/customer-manager';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
   try {
@@ -57,6 +60,69 @@ export async function POST(req: NextRequest) {
         { error: 'Appointment date must be in the future' },
         { status: 400 }
       );
+    }
+
+    // Get customer info for blocking checks
+    const customer = await prisma.customer.findUnique({
+      where: { id: data.customerId },
+      select: { email: true, phone: true, firstName: true, lastName: true }
+    });
+
+    if (!customer) {
+      return NextResponse.json(
+        { error: 'Customer not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if customer is on naughty list (blocked)
+    const naughtyListEntry = await prisma.providerNaughtyList.findFirst({
+      where: {
+        providerId: data.providerId,
+        OR: [
+          { blockedEmail: customer.email },
+          { blockedPhone: customer.phone }
+        ]
+      }
+    });
+
+    if (naughtyListEntry) {
+      return NextResponse.json(
+        { 
+          error: `This customer is blocked due to: ${naughtyListEntry.reason}. Contact the provider to resolve.`,
+          code: 'CUSTOMER_BLOCKED'
+        },
+        { status: 403 }
+      );
+    }
+
+    // Check provider selectivity - if provider is selective, customer must be approved
+    const providerAccount = await prisma.providerAccount.findUnique({
+      where: { providerId: data.providerId },
+      select: { isSelective: true, firstName: true, lastName: true }
+    });
+
+    if (providerAccount?.isSelective) {
+      // Check if customer is approved for this provider
+      const approval = await prisma.providerCustomerApproval.findUnique({
+        where: {
+          providerId_customerId: {
+            providerId: data.providerId,
+            customerId: data.customerId
+          }
+        },
+        select: { status: true }
+      });
+
+      if (!approval || approval.status !== 'approved') {
+        return NextResponse.json(
+          { 
+            error: `${providerAccount.firstName} ${providerAccount.lastName} is selective and you are not on their approved customer list. Please contact the provider directly.`,
+            code: 'PROVIDER_SELECTIVE'
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Check for conflicts
