@@ -162,6 +162,25 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
+  const calculateEndTime = (startTime: string, durationMinutes: number): string => {
+    const [hours, minutes] = startTime.split(':');
+    const startDate = new Date();
+    startDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    
+    const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+    
+    const endHours = endDate.getHours().toString().padStart(2, '0');
+    const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
+    
+    return `${endHours}:${endMinutes}`;
+  };
+
+  const formatTimeSlot = (time: string): string => {
+    const startTime = formatTime(time);
+    const endTime = formatTime(calculateEndTime(time, service.duration));
+    return `${startTime} - ${endTime}`;
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
@@ -271,13 +290,13 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
               <p className="mt-2 text-gray-600">Loading time slots...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {(availableSlots[formatDateForAPI(selectedDate)] || []).map((slot) => (
                 <button
                   key={slot.time}
                   disabled={!slot.available}
                   className={`
-                    p-3 rounded-lg border text-sm font-medium transition-all
+                    p-4 rounded-lg border text-sm font-medium transition-all
                     ${!slot.available
                       ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
                       : selectedTime === slot.time
@@ -287,7 +306,9 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                   `}
                   onClick={() => slot.available && onTimeSelect(selectedDate, slot.time)}
                 >
-                  {formatTime(slot.time)}
+                  <div className="text-xs">
+                    {formatTimeSlot(slot.time)}
+                  </div>
                 </button>
               ))}
             </div>
@@ -320,7 +341,7 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                 {format(date, 'MMM d')}
               </div>
               <div className="text-xs text-green-600 mt-1">
-                Next: {formatTime(daySlots.find(slot => slot.available)?.time || '')}
+                Next: {formatTimeSlot(daySlots.find(slot => slot.available)?.time || '')}
               </div>
             </button>
           );

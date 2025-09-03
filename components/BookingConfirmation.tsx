@@ -116,6 +116,19 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
+  const calculateEndTime = (startTime: string, durationMinutes: number): string => {
+    const [hours, minutes] = startTime.split(':');
+    const startDate = new Date();
+    startDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    
+    const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+    
+    const endHours = endDate.getHours().toString().padStart(2, '0');
+    const endMinutes = endDate.getMinutes().toString().padStart(2, '0');
+    
+    return `${endHours}:${endMinutes}`;
+  };
+
   const handleAddToCalendar = () => {
     const startDate = new Date(`${format(date, 'yyyy-MM-dd')}T${time}:00`);
     const endDate = new Date(startDate.getTime() + service.duration * 60000);
@@ -200,7 +213,7 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             <div className="text-green-700 space-y-1">
               <div>{service.name}</div>
               <div>with {provider.name}</div>
-              <div>{service.duration} minutes • {service.price === 0 ? 'FREE' : `$${service.price}`}</div>
+              <div className="font-medium text-lg">{service.price === 0 ? 'FREE' : `$${service.price}`}</div>
             </div>
           </div>
           
@@ -208,7 +221,8 @@ const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
             <h3 className="font-medium text-green-800 mb-2">Date & Time</h3>
             <div className="text-green-700 space-y-1">
               <div>{format(date, 'EEEE, MMMM d, yyyy')}</div>
-              <div>{formatTime(time)}</div>
+              <div className="font-medium">{formatTime(time)} - {formatTime(calculateEndTime(time, service.duration))}</div>
+              <div className="text-sm">Duration: {service.duration} minutes</div>
               <div className="text-sm">Please arrive 5 minutes early</div>
             </div>
           </div>
