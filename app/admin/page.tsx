@@ -384,6 +384,8 @@ export default function AdminPage() {
 
   // Password Reset Section Component
   const PasswordResetSection = ({ providerAccounts, onMessage }: { providerAccounts: { id: string; name: string; email: string; lastLogin?: Date | null }[], onMessage: (type: 'success' | 'error', text: string) => void }) => {
+    console.log('🔑 DEBUG: PasswordResetSection received providerAccounts:', providerAccounts);
+    console.log('🔑 DEBUG: PasswordResetSection providerAccounts length:', providerAccounts?.length || 0);
     const [adminPassword, setAdminPassword] = useState('');
     const [confirmAdminPassword, setConfirmAdminPassword] = useState('');
     const [isResettingAdmin, setIsResettingAdmin] = useState(false);
@@ -541,14 +543,26 @@ export default function AdminPage() {
                   disabled={isResettingProvider}
                 >
                   <option value="">Choose a barber...</option>
-                  {providerAccounts.map((account) => {
-                    console.log('🔄 Rendering provider option:', account);
-                    return (
-                      <option key={account.id} value={account.id}>
-                        {account.name} ({account.email})
-                      </option>
-                    );
-                  })}
+                  {(() => {
+                    console.log('🎯 DEBUG: About to render dropdown options');
+                    console.log('🎯 DEBUG: providerAccounts array:', providerAccounts);
+                    console.log('🎯 DEBUG: providerAccounts length:', providerAccounts?.length || 0);
+                    console.log('🎯 DEBUG: providerAccounts type:', typeof providerAccounts);
+                    
+                    if (!providerAccounts || providerAccounts.length === 0) {
+                      console.log('⚠️ DEBUG: No provider accounts available for dropdown');
+                      return <option disabled>No barbers available</option>;
+                    }
+                    
+                    return providerAccounts.map((account) => {
+                      console.log('🔄 Rendering provider option:', account);
+                      return (
+                        <option key={account.id} value={account.id}>
+                          {account.name} ({account.email})
+                        </option>
+                      );
+                    });
+                  })()}
                 </select>
               </div>
               
@@ -935,7 +949,10 @@ export default function AdminPage() {
         </button>
         <button
           className={`tab ${state.activeTab === 'passwords' ? 'active' : ''}`}
-          onClick={() => setState(prev => ({ ...prev, activeTab: 'passwords' }))}
+          onClick={() => {
+            console.log('🎯 Passwords tab clicked!');
+            setState(prev => ({ ...prev, activeTab: 'passwords' }));
+          }}
         >
           Passwords
         </button>
@@ -1272,7 +1289,11 @@ export default function AdminPage() {
               </div>
             )}
 
-            {state.activeTab === 'passwords' && (
+            {(() => {
+              console.log('🔍 Current activeTab:', state.activeTab);
+              console.log('🔍 Is passwords tab?', state.activeTab === 'passwords');
+              return state.activeTab === 'passwords';
+            })() && (
               <PasswordResetSection 
                 providerAccounts={state.providerAccounts}
                 onMessage={(type, text) => {
