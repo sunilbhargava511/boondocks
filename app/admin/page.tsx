@@ -47,15 +47,14 @@ export default function AdminPage() {
   useEffect(() => {
     console.log('🔄 Admin useEffect running...');
     
-    // Check if user has provider token - redirect them to provider portal
+    // Check if user has provider token - show warning but allow admin access
     const providerToken = localStorage.getItem('providerToken');
     console.log('🔑 Provider token found:', !!providerToken);
     
     if (providerToken) {
-      console.log('⚠️ Redirecting to provider portal...');
-      alert('Please use the Provider Portal at /providers for your account access.');
-      window.location.href = '/providers';
-      return;
+      console.log('⚠️ Provider token exists, but allowing admin access');
+      // Clear provider token to avoid conflicts
+      localStorage.removeItem('providerToken');
     }
     
     console.log('📊 Loading admin data...');
