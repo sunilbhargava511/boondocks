@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import ProviderLogin from '@/components/ProviderLogin';
 
 type UserRole = 'provider' | 'admin';
 
@@ -18,6 +19,13 @@ const LoginPage: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showProviderLogin, setShowProviderLogin] = useState(false);
+
+  const handleProviderLoginSuccess = (provider: any, token: string) => {
+    // Store token and redirect to provider dashboard
+    localStorage.setItem('providerToken', token);
+    window.location.href = '/providers';
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +90,11 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  // If provider login is selected, show the provider cards interface
+  if (showProviderLogin) {
+    return <ProviderLogin onLogin={handleProviderLoginSuccess} />;
+  }
+
   return (
     <div className="login-page">
       <div className="login-container">
@@ -96,7 +109,10 @@ const LoginPage: React.FC = () => {
           <button
             type="button"
             className={`role-button ${form.role === 'provider' ? 'active' : ''}`}
-            onClick={() => setForm({ ...form, role: 'provider' })}
+            onClick={() => {
+              setForm({ ...form, role: 'provider' });
+              setShowProviderLogin(true);
+            }}
           >
             <span className="role-icon">{getRoleIcon('provider')}</span>
             <span className="role-name">Provider</span>
@@ -106,7 +122,10 @@ const LoginPage: React.FC = () => {
           <button
             type="button"
             className={`role-button ${form.role === 'admin' ? 'active' : ''}`}
-            onClick={() => setForm({ ...form, role: 'admin' })}
+            onClick={() => {
+              setForm({ ...form, role: 'admin' });
+              setShowProviderLogin(false);
+            }}
           >
             <span className="role-icon">{getRoleIcon('admin')}</span>
             <span className="role-name">Admin</span>
@@ -114,61 +133,48 @@ const LoginPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="login-form">
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
+        {/* Only show the form if admin is selected */}
+        {form.role === 'admin' && (
+          <form onSubmit={handleLogin} className="login-form">
+            {error && (
+              <div className="error-message">
+                {error}
+              </div>
+            )}
 
-          <div className="form-group">
-            <label htmlFor="email">
-              {form.role === 'admin' ? 'Admin Password' : 'Email Address'}
-            </label>
-            <input
-              type={form.role === 'admin' ? 'password' : 'email'}
-              id="email"
-              value={form.role === 'admin' ? form.password : form.email}
-              onChange={(e) => form.role === 'admin' 
-                ? setForm({ ...form, password: e.target.value })
-                : setForm({ ...form, email: e.target.value })
-              }
-              placeholder={form.role === 'admin' ? 'Enter admin password' : 'your@email.com'}
-              required
-              autoComplete={form.role === 'admin' ? 'current-password' : 'email'}
-            />
-          </div>
-
-          {form.role === 'provider' && (
             <div className="form-group">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">Admin Password</label>
               <input
                 type="password"
                 id="password"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="Enter your password"
+                placeholder="Enter admin password"
                 required
                 autoComplete="current-password"
               />
             </div>
-          )}
 
-          <button
-            type="submit"
-            className="login-button"
-            disabled={loading}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
+            <button
+              type="submit"
+              className="login-button"
+              disabled={loading}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
 
-          <p className="login-description">
-            {form.role === 'admin' 
-              ? 'Full system administration access' 
-              : 'Manage your schedule and appointments'}
-          </p>
-        </form>
+            <p className="login-description">
+              Full system administration access
+            </p>
+          </form>
+        )}
+
+        {/* Show instruction for provider selection */}
+        {form.role === 'provider' && !showProviderLogin && (
+          <div className="provider-instruction">
+            <p>Click the Provider button above to see all barber accounts</p>
+          </div>
+        )}
 
         <div className="login-footer">
           <p><a href="/">← Back to Booking</a></p>
@@ -272,6 +278,20 @@ const LoginPage: React.FC = () => {
           display: block;
           font-size: 11px;
           color: #6b7280;
+        }
+
+        .provider-instruction {
+          text-align: center;
+          padding: 20px;
+          background: #f8f9fa;
+          border-radius: 8px;
+          margin-bottom: 24px;
+        }
+
+        .provider-instruction p {
+          margin: 0;
+          color: #666;
+          font-style: italic;
         }
 
         .login-form {
