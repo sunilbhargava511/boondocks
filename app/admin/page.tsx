@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Provider, Service } from '@/lib/types';
 import { loadProviders, loadServices } from '@/lib/data';
 import CustomerManagement from '@/components/CustomerManagement';
-import SimplybookSyncSettings from '@/components/SimplybookSyncSettings';
+import SimplybookSync from '@/components/SimplybookSync';
 
 interface AdminState {
   isAuthenticated: boolean;
@@ -1285,7 +1285,7 @@ export default function AdminPage() {
 
             {state.activeTab === 'settings' && (
               <div className="settings-section">
-                <SimplybookSyncSettings />
+                <SimplybookSync />
               </div>
             )}
 

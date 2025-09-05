@@ -127,17 +127,26 @@ model SystemSettings {
 // Provider Accounts
 model ProviderAccount {
   id                String   @id @default(uuid())
-  providerId        String   @unique @map("provider_id") // Links to provider ID in JSON
+  providerId        String   @unique @map("provider_id") // Links to provider ID in SimplyBook
   email             String   @unique
   passwordHash      String   @map("password_hash")
   firstName         String   @map("first_name")
   lastName          String   @map("last_name")
+  displayName       String?  @map("display_name") // Name shown in booking UI
   phone             String?
+  bio               String?  // Provider description/bio
+  avatarInitials    String?  @map("avatar_initials") // e.g., "JR" for Jenni Rich
   isActive          Boolean  @default(true) @map("is_active")
   role              String   @default("provider") // provider or admin
   isSelective       Boolean  @default(false) @map("is_selective") // If true, only approved customers can book
   noShowThreshold   Int      @default(3) @map("no_show_threshold") // Number of no-shows before naughty list
   enableNaughtyList Boolean  @default(true) @map("enable_naughty_list") // Enable automatic naughty list
+  // Booking restrictions
+  notAcceptingNewClients Boolean @default(false) @map("not_accepting_new_clients")
+  cashOnly          Boolean  @default(false) @map("cash_only")
+  noKidsUnder       Int?     @map("no_kids_under") // Age restriction for children
+  conversationPreference Boolean @default(false) @map("conversation_preference") // If true, show conversation level option
+  specialNotes      String?  @map("special_notes") // Additional notes about the provider
   lastLogin         DateTime? @map("last_login")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
@@ -148,6 +157,7 @@ model ProviderAccount {
   approvedCustomers ProviderCustomerApproval[]
   naughtyListEntries ProviderNaughtyList[]
   noShowIncidents   NoShowIncident[]
+  availability      ProviderWeeklyAvailability?
   
   @@map("provider_accounts")
 }
@@ -249,4 +259,25 @@ model ProviderNaughtyList {
   @@index([blockedEmail])
   @@index([blockedPhone])
   @@map("provider_naughty_list")
+}
+
+// Provider Weekly Availability Schedule
+model ProviderWeeklyAvailability {
+  id          String   @id @default(uuid())
+  providerId  String   @unique @map("provider_id")
+  provider    ProviderAccount @relation(fields: [providerId], references: [providerId], onDelete: Cascade)
+  
+  // Weekly schedule (null means not available that day)
+  monday      String?  // e.g., "9:00am-8:00pm"
+  tuesday     String?
+  wednesday   String?
+  thursday    String?
+  friday      String?
+  saturday    String?
+  sunday      String?
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("provider_weekly_availability")
 }

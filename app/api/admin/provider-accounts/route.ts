@@ -14,19 +14,22 @@ export async function GET(req: NextRequest) {
         email: true,
         firstName: true,
         lastName: true,
+        displayName: true,
         role: true,
         lastLogin: true
       },
-      orderBy: {
-        firstName: 'asc'
-      }
+      orderBy: [
+        { role: 'asc' }, // Providers first, then admins
+        { firstName: 'asc' }
+      ]
     });
 
     // Transform to match the expected format for the admin dropdown
     const providers = providerAccounts.map(account => ({
       id: account.providerId || account.id,
-      name: `${account.firstName} ${account.lastName}`,
+      name: account.displayName || `${account.firstName} ${account.lastName}`,
       email: account.email,
+      role: account.role,
       lastLogin: account.lastLogin
     }));
 
