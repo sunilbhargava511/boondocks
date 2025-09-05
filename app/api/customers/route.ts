@@ -6,6 +6,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('q');
     const limit = parseInt(searchParams.get('limit') || '50');
+    const page = parseInt(searchParams.get('page') || '1');
+    const offset = (page - 1) * limit;
     
     // Filter parameters
     const accountStatus = searchParams.get('status')?.split(',') as ('active' | 'suspended' | 'blocked')[] | undefined;
@@ -16,30 +18,56 @@ export async function GET(req: NextRequest) {
     const lastVisitBefore = searchParams.get('lastVisitBefore') ? new Date(searchParams.get('lastVisitBefore')!) : undefined;
     const createdAfter = searchParams.get('createdAfter') ? new Date(searchParams.get('createdAfter')!) : undefined;
     const createdBefore = searchParams.get('createdBefore') ? new Date(searchParams.get('createdBefore')!) : undefined;
+    
+    // Provider-specific filtering
+    const providerId = searchParams.get('providerId');
+    const activeOnly = searchParams.get('activeOnly') === 'true';
+    const recentMonths = searchParams.get('recentMonths') ? parseInt(searchParams.get('recentMonths')!) : undefined;
 
     let customers;
+    let totalCount = 0;
+
+    const filters = {
+      accountStatus,
+      minLoyaltyPoints,
+      noShowThreshold,
+      tags,
+      lastVisitAfter,
+      lastVisitBefore,
+      createdAfter,
+      createdBefore,
+      providerId,
+      activeOnly,
+      recentMonths,
+    };
 
     if (query) {
       // Search customers
-      customers = await customerManager.searchCustomers(query, limit);
-    } else if (accountStatus || minLoyaltyPoints || noShowThreshold || tags || lastVisitAfter || lastVisitBefore || createdAfter || createdBefore) {
-      // Filter customers
-      customers = await customerManager.getCustomersWithFilters({
-        accountStatus,
-        minLoyaltyPoints,
-        noShowThreshold,
-        tags,
-        lastVisitAfter,
-        lastVisitBefore,
-        createdAfter,
-        createdBefore,
-      }, limit);
+      const result = await customerManager.searchCustomers(query, limit, offset, filters);
+      customers = result.customers;
+      totalCount = result.total;
     } else {
-      // Get all customers with basic filters
-      customers = await customerManager.getCustomersWithFilters({}, limit);
+      // Filter customers
+      const result = await customerManager.getCustomersWithFilters(filters, limit, offset);
+      customers = result.customers;
+      totalCount = result.total;
     }
 
-    return NextResponse.json({ customers });
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    return NextResponse.json({ 
+      customers,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage
+      }
+    });
   } catch (error) {
     console.error('Error fetching customers:', error);
     return NextResponse.json(

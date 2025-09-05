@@ -1,0 +1,11 @@
+First Name,Last Name,Email,Phone,Date of Birth,Conversation Level,Preferred Provider,Notes,Marketing Consent,SMS Consent,Email Consent,Loyalty Points,Total Spent,Preferred Days,Preferred Times,Preferred Services,Allergies/Notes,Special Instructions,Tags
+John,Smith,john.smith1@email.com,555-0001,1985-01-15,2,Jan,Regular customer,true,true,true,25,125.00,monday,morning,haircut,,Please use scissors only,regular
+Jane,Doe,jane.doe1@email.com,555-0002,1990-02-20,3,Dante X,Chatty customer,true,false,true,50,250.00,tuesday,afternoon,haircut,beard trim,No allergies,Weekly appointments,vip
+Michael,Johnson,michael.johnson1@email.com,555-0003,1982-03-25,1,Jenni Rich,Quiet customer,false,true,true,10,75.00,wednesday,evening,haircut,,Prefers quiet environment,quiet
+Sarah,Wilson,sarah.wilson1@email.com,555-0004,1988-04-30,2,Pedro Mora,Long hair specialty,true,true,false,35,175.00,thursday,morning,transformation cut,Sensitive scalp,Use gentle products,long-hair
+David,Brown,david.brown1@email.com,555-0005,1975-05-05,3,Michelle Connolly,Existing client,true,true,true,100,500.00,friday,afternoon,haircut,beard trim,None,Loyal customer,existing
+Lisa,Taylor,lisa.taylor1@email.com,555-0006,1992-06-10,2,Anthony Cortez,No kids policy,true,false,true,20,100.00,saturday,morning,haircut,,Adult only,adult
+Robert,Anderson,robert.anderson1@email.com,555-0007,1980-07-15,1,Jan,Minimal conversation,false,false,true,15,90.00,monday,evening,haircut,,Prefers silence,quiet
+Emily,Thomas,emily.thomas1@email.com,555-0008,1995-08-20,3,Dante X,Cash preferred,true,true,true,40,200.00,tuesday,morning,haircut,shave,Cash only,Bring cash,cash
+James,Jackson,james.jackson1@email.com,555-0009,1987-09-25,2,Jenni Rich,Regular trim,true,true,false,30,150.00,wednesday,afternoon,haircut,,Every 3 weeks,regular
+Maria,White,maria.white1@email.com,555-0010,1993-10-30,3,Pedro Mora,Color specialist,true,false,true,45,225.00,thursday,evening,color,treatment,No ammonia,Color expert needed,color

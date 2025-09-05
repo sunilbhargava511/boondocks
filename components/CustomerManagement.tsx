@@ -49,35 +49,60 @@ export default function CustomerManagement() {
     importMapping: {},
     message: { type: '', text: '' },
   });
+  
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 25, // Smaller page size for performance
+    totalCount: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+  
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table'); // Default to table for better performance
 
   useEffect(() => {
     loadCustomers();
-  }, []);
+  }, [pagination.page]);
 
-  const loadCustomers = async (searchQuery?: string, filters?: any) => {
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (state.searchQuery.length >= 2 || state.searchQuery.length === 0) {
+        setPagination(prev => ({ ...prev, page: 1 }));
+        loadCustomers();
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [state.searchQuery, state.filters]);
+
+  const loadCustomers = async () => {
     setState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      const params = new URLSearchParams();
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+      });
       
-      if (searchQuery) {
-        params.append('q', searchQuery);
+      if (state.searchQuery) {
+        params.append('q', state.searchQuery);
       }
       
-      if (filters?.accountStatus?.length) {
-        params.append('status', filters.accountStatus.join(','));
+      if (state.filters?.accountStatus?.length) {
+        params.append('status', state.filters.accountStatus.join(','));
       }
       
-      if (filters?.minLoyaltyPoints) {
-        params.append('minLoyaltyPoints', filters.minLoyaltyPoints.toString());
+      if (state.filters?.minLoyaltyPoints) {
+        params.append('minLoyaltyPoints', state.filters.minLoyaltyPoints.toString());
       }
       
-      if (filters?.noShowThreshold) {
-        params.append('noShowThreshold', filters.noShowThreshold.toString());
+      if (state.filters?.noShowThreshold) {
+        params.append('noShowThreshold', state.filters.noShowThreshold.toString());
       }
       
-      if (filters?.tags?.length) {
-        params.append('tags', filters.tags.join(','));
+      if (state.filters?.tags?.length) {
+        params.append('tags', state.filters.tags.join(','));
       }
 
       const response = await fetch(`/api/customers?${params}`);
@@ -89,6 +114,7 @@ export default function CustomerManagement() {
           customers: data.customers,
           isLoading: false,
         }));
+        setPagination(data.pagination);
       } else {
         throw new Error(data.error || 'Failed to load customers');
       }
@@ -103,14 +129,14 @@ export default function CustomerManagement() {
 
   const handleSearch = (query: string) => {
     setState(prev => ({ ...prev, searchQuery: query }));
-    if (query.length >= 2 || query.length === 0) {
-      loadCustomers(query, state.filters);
-    }
   };
 
   const handleFilter = (newFilters: any) => {
     setState(prev => ({ ...prev, filters: newFilters }));
-    loadCustomers(state.searchQuery, newFilters);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
   };
 
   const handleCustomerSelect = (customer: Customer) => {
@@ -263,26 +289,42 @@ export default function CustomerManagement() {
     <div className="customer-management">
       <div className="customer-header">
         <h2>Customer Management</h2>
-        <div className="customer-actions">
-          <button 
-            onClick={() => setState(prev => ({ ...prev, showImportDialog: true }))}
-            className="action-button import-btn"
-          >
-            Import CSV
-          </button>
-          <button 
-            onClick={() => setState(prev => ({ ...prev, showExportDialog: true }))}
-            className="action-button export-btn"
-          >
-            Export Data
-          </button>
-          <button 
-            onClick={syncCustomers}
-            className="action-button sync-btn"
-            disabled={state.isLoading}
-          >
-            {state.isLoading ? 'Syncing...' : 'Sync SimplyBook'}
-          </button>
+        <div className="header-controls">
+          <div className="view-controls">
+            <button 
+              className={`view-button ${viewMode === 'table' ? 'active' : ''}`}
+              onClick={() => setViewMode('table')}
+            >
+              Table View
+            </button>
+            <button 
+              className={`view-button ${viewMode === 'grid' ? 'active' : ''}`}
+              onClick={() => setViewMode('grid')}
+            >
+              Grid View
+            </button>
+          </div>
+          <div className="customer-actions">
+            <button 
+              onClick={() => setState(prev => ({ ...prev, showImportDialog: true }))}
+              className="action-button import-btn"
+            >
+              Import CSV
+            </button>
+            <button 
+              onClick={() => setState(prev => ({ ...prev, showExportDialog: true }))}
+              className="action-button export-btn"
+            >
+              Export Data
+            </button>
+            <button 
+              onClick={syncCustomers}
+              className="action-button sync-btn"
+              disabled={state.isLoading}
+            >
+              {state.isLoading ? 'Syncing...' : 'Sync SimplyBook'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -380,61 +422,164 @@ export default function CustomerManagement() {
       </div>
 
       <div className="customer-content">
-        <div className="customer-list">
-          {state.isLoading ? (
-            <div className="loading">Loading customers...</div>
-          ) : state.customers.length === 0 ? (
-            <div className="no-customers">
-              No customers found. Try adjusting your search or filters.
-            </div>
-          ) : (
-            <div className="customer-grid">
-              {state.customers.map((customer) => (
-                <div 
-                  key={customer.id}
-                  className={`customer-card ${state.selectedCustomer?.id === customer.id ? 'selected' : ''}`}
-                  onClick={() => handleCustomerSelect(customer)}
-                >
-                  <div className="customer-header-card">
-                    <div className="customer-name">
-                      {customer.firstName} {customer.lastName}
+        {state.isLoading ? (
+          <div className="loading">Loading customers...</div>
+        ) : state.customers.length === 0 ? (
+          <div className="no-customers">
+            {state.searchQuery 
+              ? `No customers found matching "${state.searchQuery}"`
+              : "No customers found. Try adjusting your search or filters, or import customer data."
+            }
+          </div>
+        ) : (
+          <>
+            {viewMode === 'table' ? (
+              <div className="customer-table-container">
+                <table className="customer-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Contact</th>
+                      <th>Status</th>
+                      <th>Last Visit</th>
+                      <th>Total Spent</th>
+                      <th>Loyalty Points</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {state.customers.map((customer) => (
+                      <tr key={customer.id} className="customer-row">
+                        <td className="customer-name">
+                          <div>
+                            <div className="name">{customer.firstName} {customer.lastName}</div>
+                            {customer.noShowCount > 0 && (
+                              <div className="warning-text">No-shows: {customer.noShowCount}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="customer-contact">
+                          <div>{customer.email}</div>
+                          <div className="phone">{customer.phone}</div>
+                        </td>
+                        <td className="status">
+                          <span className={`status-badge ${customer.accountStatus}`}>
+                            {customer.accountStatus}
+                          </span>
+                        </td>
+                        <td className="last-visit">
+                          {customer.lastVisit ? new Date(customer.lastVisit).toLocaleDateString() : 'Never'}
+                        </td>
+                        <td className="total-spent">
+                          ${customer.totalSpent.toFixed(2)}
+                        </td>
+                        <td className="loyalty-points">
+                          {customer.loyaltyPoints}
+                        </td>
+                        <td className="actions">
+                          <button
+                            onClick={() => handleCustomerSelect(customer)}
+                            className="view-button"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="customer-grid">
+                {state.customers.map((customer) => (
+                  <div 
+                    key={customer.id}
+                    className={`customer-card ${state.selectedCustomer?.id === customer.id ? 'selected' : ''}`}
+                    onClick={() => handleCustomerSelect(customer)}
+                  >
+                    <div className="customer-header-card">
+                      <div className="customer-name">
+                        {customer.firstName} {customer.lastName}
+                      </div>
+                      <div className={`customer-status ${customer.accountStatus}`}>
+                        {customer.accountStatus}
+                      </div>
                     </div>
-                    <div className={`customer-status ${customer.accountStatus}`}>
-                      {customer.accountStatus}
+                    
+                    <div className="customer-details">
+                      <p><strong>Email:</strong> {customer.email}</p>
+                      <p><strong>Phone:</strong> {customer.phone}</p>
+                      <p><strong>Loyalty Points:</strong> {customer.loyaltyPoints}</p>
+                      <p><strong>Total Spent:</strong> ${customer.totalSpent}</p>
+                      {customer.noShowCount > 0 && (
+                        <p className="warning"><strong>No-Shows:</strong> {customer.noShowCount}</p>
+                      )}
                     </div>
-                  </div>
-                  
-                  <div className="customer-details">
-                    <p><strong>Email:</strong> {customer.email}</p>
-                    <p><strong>Phone:</strong> {customer.phone}</p>
-                    <p><strong>Loyalty Points:</strong> {customer.loyaltyPoints}</p>
-                    <p><strong>Total Spent:</strong> ${customer.totalSpent}</p>
-                    {customer.noShowCount > 0 && (
-                      <p className="warning"><strong>No-Shows:</strong> {customer.noShowCount}</p>
-                    )}
-                  </div>
 
-                  {customer.tags && customer.tags.length > 0 && (
-                    <div className="customer-tags">
-                      {customer.tags.map((tag: any, index: number) => (
-                        <span key={index} className="customer-tag">
-                          {tag.tagName}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="customer-meta">
-                    <span>Created: {new Date(customer.createdAt).toLocaleDateString()}</span>
-                    {customer.lastVisit && (
-                      <span>Last Visit: {new Date(customer.lastVisit).toLocaleDateString()}</span>
+                    {customer.tags && customer.tags.length > 0 && (
+                      <div className="customer-tags">
+                        {customer.tags.map((tag: any, index: number) => (
+                          <span key={index} className="customer-tag">
+                            {tag.tagName}
+                          </span>
+                        ))}
+                      </div>
                     )}
+
+                    <div className="customer-meta">
+                      <span>Created: {new Date(customer.createdAt).toLocaleDateString()}</span>
+                      {customer.lastVisit && (
+                        <span>Last Visit: {new Date(customer.lastVisit).toLocaleDateString()}</span>
+                      )}
+                    </div>
                   </div>
+                ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="pagination">
+                <div className="pagination-info">
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.totalCount)} of {pagination.totalCount} customers
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <div className="pagination-controls">
+                  <button
+                    onClick={() => handlePageChange(1)}
+                    disabled={!pagination.hasPreviousPage}
+                    className="page-button"
+                  >
+                    First
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(pagination.page - 1)}
+                    disabled={!pagination.hasPreviousPage}
+                    className="page-button"
+                  >
+                    Previous
+                  </button>
+                  <span className="page-numbers">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => handlePageChange(pagination.page + 1)}
+                    disabled={!pagination.hasNextPage}
+                    className="page-button"
+                  >
+                    Next
+                  </button>
+                  <button
+                    onClick={() => handlePageChange(pagination.totalPages)}
+                    disabled={!pagination.hasNextPage}
+                    className="page-button"
+                  >
+                    Last
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Import Dialog */}
@@ -624,6 +769,36 @@ export default function CustomerManagement() {
           margin-bottom: 20px;
         }
 
+        .header-controls {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+        }
+
+        .view-controls {
+          display: flex;
+          gap: 5px;
+        }
+
+        .view-button {
+          padding: 6px 12px;
+          border: 1px solid #ddd;
+          background: #f5f5f5;
+          cursor: pointer;
+          font-size: 12px;
+          border-radius: 3px;
+        }
+
+        .view-button.active {
+          background: #2196f3;
+          color: white;
+          border-color: #2196f3;
+        }
+
+        .view-button:hover:not(.active) {
+          background: #e0e0e0;
+        }
+
         .customer-header h2 {
           font-family: 'Oswald', sans-serif;
           font-size: 24px;
@@ -748,6 +923,119 @@ export default function CustomerManagement() {
           padding: 40px;
           color: #666;
           font-size: 16px;
+        }
+
+        .customer-table-container {
+          background: white;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          margin-bottom: 20px;
+        }
+
+        .customer-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .customer-table th,
+        .customer-table td {
+          padding: 12px 15px;
+          text-align: left;
+          border-bottom: 1px solid #e0e0e0;
+        }
+
+        .customer-table th {
+          background: #f8f9fa;
+          font-weight: 600;
+          font-size: 14px;
+          color: #333;
+          position: sticky;
+          top: 0;
+        }
+
+        .customer-row:hover {
+          background: #f5f5f5;
+        }
+
+        .customer-name .name {
+          font-weight: 600;
+          margin-bottom: 2px;
+        }
+
+        .warning-text {
+          font-size: 12px;
+          color: #f44336;
+          font-weight: 600;
+        }
+
+        .customer-contact {
+          font-size: 14px;
+        }
+
+        .customer-contact .phone {
+          color: #666;
+          font-size: 13px;
+        }
+
+        .view-button {
+          padding: 6px 12px;
+          background: #2196f3;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+
+        .view-button:hover {
+          background: #1976d2;
+        }
+
+        .pagination {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px;
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .pagination-info {
+          font-size: 14px;
+          color: #666;
+        }
+
+        .pagination-controls {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .page-button {
+          padding: 8px 12px;
+          background: #f5f5f5;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+        }
+
+        .page-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .page-button:hover:not(:disabled) {
+          background: #2196f3;
+          color: white;
+          border-color: #2196f3;
+        }
+
+        .page-numbers {
+          font-weight: 600;
+          margin: 0 10px;
         }
 
         .customer-grid {
@@ -972,6 +1260,16 @@ export default function CustomerManagement() {
             align-items: stretch;
           }
 
+          .header-controls {
+            flex-direction: column;
+            gap: 15px;
+            align-items: stretch;
+          }
+
+          .view-controls {
+            justify-content: center;
+          }
+
           .customer-actions {
             justify-content: center;
           }
@@ -981,8 +1279,25 @@ export default function CustomerManagement() {
             align-items: stretch;
           }
 
+          .customer-table-container {
+            overflow-x: auto;
+          }
+
+          .customer-table {
+            min-width: 700px;
+          }
+
           .customer-grid {
             grid-template-columns: 1fr;
+          }
+
+          .pagination {
+            flex-direction: column;
+            gap: 15px;
+          }
+
+          .pagination-controls {
+            order: -1;
           }
 
           .dialog {

@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import ProviderAppointments from './ProviderAppointments';
 import ProviderAvailability from './ProviderAvailability';
 import ProviderCalendar from './ProviderCalendar';
-import ProviderCustomerApprovals from './ProviderCustomerApprovals';
+import ProviderCustomersView from './ProviderCustomersView';
+import ProviderAppointmentsView from './ProviderAppointmentsView';
 import ProviderNaughtyList from './ProviderNaughtyList';
 
 interface ProviderDashboardProps {
@@ -114,7 +115,7 @@ export default function ProviderDashboard({ provider, onLogout }: ProviderDashbo
       {/* Content Area */}
       <div className="content-area">
         {activeTab === 'appointments' && (
-          <ProviderAppointments provider={provider} />
+          <ProviderAppointmentsView providerId={provider.providerId} />
         )}
         {activeTab === 'calendar' && (
           <ProviderCalendar provider={provider} />
@@ -123,7 +124,7 @@ export default function ProviderDashboard({ provider, onLogout }: ProviderDashbo
           <ProviderAvailability provider={provider} />
         )}
         {activeTab === 'customers' && (
-          <ProviderCustomerApprovals provider={provider} />
+          <ProviderCustomersView providerId={provider.providerId} />
         )}
         {activeTab === 'naughty' && (
           <ProviderNaughtyList provider={provider} />

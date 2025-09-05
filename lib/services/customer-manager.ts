@@ -198,62 +198,115 @@ export class CustomerManager {
     }
   }
 
-  async searchCustomers(query: string, limit: number = 50): Promise<Customer[]> {
-    return await this.prisma.customer.findMany({
-      where: {
-        OR: [
-          {
-            firstName: {
-              contains: query,
-              mode: 'insensitive',
-            },
+  async searchCustomers(
+    query: string, 
+    limit: number = 50, 
+    offset: number = 0, 
+    filters: any = {}
+  ): Promise<{ customers: Customer[]; total: number }> {
+    const baseWhere = {
+      OR: [
+        {
+          firstName: {
+            contains: query,
+            mode: 'insensitive' as const,
           },
-          {
-            lastName: {
-              contains: query,
-              mode: 'insensitive',
-            },
-          },
-          {
-            email: {
-              contains: query,
-              mode: 'insensitive',
-            },
-          },
-          {
-            phone: {
-              contains: query,
-            },
-          },
-        ],
-      },
-      include: {
-        preferences: true,
-        tags: true,
-        appointments: {
-          orderBy: { appointmentDate: 'desc' },
-          take: 5, // Last 5 appointments for search results
         },
-      },
-      take: limit,
-      orderBy: [
-        { lastVisit: 'desc' },
-        { createdAt: 'desc' }
+        {
+          lastName: {
+            contains: query,
+            mode: 'insensitive' as const,
+          },
+        },
+        {
+          email: {
+            contains: query,
+            mode: 'insensitive' as const,
+          },
+        },
+        {
+          phone: {
+            contains: query,
+          },
+        },
       ],
-    });
+    };
+
+    // Apply additional filters
+    const where = this.buildWhereClause(baseWhere, filters);
+
+    const [customers, total] = await Promise.all([
+      this.prisma.customer.findMany({
+        where,
+        include: {
+          preferences: true,
+          tags: true,
+          appointments: {
+            orderBy: { appointmentDate: 'desc' },
+            take: 5,
+          },
+        },
+        skip: offset,
+        take: limit,
+        orderBy: [
+          { lastVisit: 'desc' },
+          { createdAt: 'desc' }
+        ],
+      }),
+      this.prisma.customer.count({ where }),
+    ]);
+
+    return { customers, total };
   }
 
-  async getCustomersWithFilters(filters: {
-    accountStatus?: ('active' | 'suspended' | 'blocked')[];
-    minLoyaltyPoints?: number;
-    noShowThreshold?: number;
-    tags?: string[];
-    lastVisitAfter?: Date;
-    lastVisitBefore?: Date;
-    createdAfter?: Date;
-    createdBefore?: Date;
-  }, limit: number = 100): Promise<Customer[]> {
-    const where: any = {};
+  async getCustomersWithFilters(
+    filters: {
+      accountStatus?: ('active' | 'suspended' | 'blocked')[];
+      minLoyaltyPoints?: number;
+      noShowThreshold?: number;
+      tags?: string[];
+      lastVisitAfter?: Date;
+      lastVisitBefore?: Date;
+      createdAfter?: Date;
+      createdBefore?: Date;
+      providerId?: string;
+      activeOnly?: boolean;
+      recentMonths?: number;
+    }, 
+    limit: number = 100, 
+    offset: number = 0
+  ): Promise<{ customers: Customer[]; total: number }> {
+    const where = this.buildWhereClause({}, filters);
+
+    const [customers, total] = await Promise.all([
+      this.prisma.customer.findMany({
+        where,
+        include: {
+          preferences: true,
+          tags: true,
+          appointments: {
+            orderBy: { appointmentDate: 'desc' },
+            take: 5,
+            ...(filters.providerId && {
+              where: { providerId: filters.providerId }
+            })
+          },
+        },
+        skip: offset,
+        take: limit,
+        orderBy: [
+          { lastVisit: 'desc' },
+          { createdAt: 'desc' }
+        ],
+      }),
+      this.prisma.customer.count({ where }),
+    ]);
+
+    return { customers, total };
+  }
+
+  private buildWhereClause(baseWhere: any = {}, filters: any): any {
+    const where = { ...baseWhere };
 
     if (filters.accountStatus) {
       where.accountStatus = { in: filters.accountStatus };
@@ -289,22 +342,39 @@ export class CustomerManager {
       };
     }
 
-    return await this.prisma.customer.findMany({
-      where,
-      include: {
-        preferences: true,
-        tags: true,
-        appointments: {
-          orderBy: { appointmentDate: 'desc' },
-          take: 5,
-        },
-      },
-      take: limit,
-      orderBy: [
-        { lastVisit: 'desc' },
-        { createdAt: 'desc' }
-      ],
-    });
+    // Provider-specific filtering
+    if (filters.providerId) {
+      // Show customers who have appointments with this provider
+      where.appointments = {
+        some: {
+          providerId: filters.providerId,
+          ...(filters.activeOnly && filters.recentMonths && {
+            appointmentDate: {
+              gte: new Date(Date.now() - filters.recentMonths * 30 * 24 * 60 * 60 * 1000)
+            }
+          })
+        }
+      };
+    }
+
+    // Show only active customers for providers
+    if (filters.activeOnly) {
+      where.accountStatus = 'active';
+      
+      // If recentMonths is specified, show customers with recent activity
+      if (filters.recentMonths) {
+        const cutoffDate = new Date(Date.now() - filters.recentMonths * 30 * 24 * 60 * 60 * 1000);
+        if (!where.appointments) {
+          where.appointments = { some: {} };
+        }
+        if (!where.appointments.some.appointmentDate) {
+          where.appointments.some.appointmentDate = {};
+        }
+        where.appointments.some.appointmentDate.gte = cutoffDate;
+      }
+    }
+
+    return where;
   }
 
   // Preference management

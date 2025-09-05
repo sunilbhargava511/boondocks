@@ -8,30 +8,66 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const customerId = searchParams.get('customerId');
-    const status = searchParams.get('status');
+    const status = searchParams.get('status')?.split(',');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const providerId = searchParams.get('providerId');
     const serviceId = searchParams.get('serviceId');
-    const limit = parseInt(searchParams.get('limit') || '100');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const page = parseInt(searchParams.get('page') || '1');
+    const offset = (page - 1) * limit;
+    
+    // Time-based filtering for providers
+    const recentWeeks = searchParams.get('recentWeeks') ? parseInt(searchParams.get('recentWeeks')!) : undefined;
+    const includeFuture = searchParams.get('includeFuture') === 'true';
 
     // Build filters
     const filters: any = {};
     
     if (customerId) filters.customerId = customerId;
-    if (status) filters.status = status;
+    if (status) filters.status = status.length === 1 ? status[0] : { in: status };
     if (providerId) filters.providerId = providerId;
     if (serviceId) filters.serviceId = serviceId;
     
-    if (startDate || endDate) {
+    // Date filtering
+    if (startDate || endDate || recentWeeks || includeFuture) {
       filters.appointmentDate = {};
-      if (startDate) filters.appointmentDate.gte = new Date(startDate);
-      if (endDate) filters.appointmentDate.lte = new Date(endDate);
+      
+      if (startDate) {
+        filters.appointmentDate.gte = new Date(startDate);
+      } else if (recentWeeks) {
+        // Show appointments from X weeks ago
+        const weeksAgo = new Date(Date.now() - recentWeeks * 7 * 24 * 60 * 60 * 1000);
+        filters.appointmentDate.gte = weeksAgo;
+      }
+      
+      if (endDate) {
+        filters.appointmentDate.lte = new Date(endDate);
+      } else if (includeFuture) {
+        // Include all future appointments (no end date filter)
+      } else if (!endDate && !includeFuture) {
+        // If no end date specified and not including future, show up to now
+        filters.appointmentDate.lte = new Date();
+      }
     }
 
-    const appointments = await customerManager.getAppointments(filters, limit);
+    const result = await getAppointmentsWithPagination(filters, limit, offset);
 
-    return NextResponse.json({ appointments });
+    const totalPages = Math.ceil(result.total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    return NextResponse.json({ 
+      appointments: result.appointments,
+      pagination: {
+        page,
+        limit,
+        totalCount: result.total,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage
+      }
+    });
   } catch (error) {
     console.error('Error fetching appointments:', error);
     return NextResponse.json(
@@ -164,4 +200,37 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function getAppointmentsWithPagination(
+  filters: any, 
+  limit: number, 
+  offset: number
+): Promise<{ appointments: any[]; total: number }> {
+  const [appointments, total] = await Promise.all([
+    prisma.appointment.findMany({
+      where: filters,
+      include: {
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            accountStatus: true,
+            noShowCount: true,
+          }
+        },
+      },
+      orderBy: [
+        { appointmentDate: 'desc' }
+      ],
+      skip: offset,
+      take: limit,
+    }),
+    prisma.appointment.count({ where: filters }),
+  ]);
+
+  return { appointments, total };
 }

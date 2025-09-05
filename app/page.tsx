@@ -194,10 +194,34 @@ export default function BookingWidget() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('🚀 Starting to load data...');
+        
+        // Add timeout to prevent infinite loading
+        const loadWithTimeout = (promise: Promise<any>, timeoutMs = 10000) => {
+          return Promise.race([
+            promise,
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+            )
+          ]);
+        };
+
         const [servicesData, providersData] = await Promise.all([
-          loadServices(),
-          loadProviders()
+          loadWithTimeout(loadServices()).catch(error => {
+            console.error('Failed to load services:', error);
+            return []; // Return empty array as fallback
+          }),
+          loadWithTimeout(loadProviders()).catch(error => {
+            console.error('Failed to load providers:', error);
+            return []; // Return empty array as fallback
+          })
         ]);
+        
+        console.log('✅ Data loaded:', { 
+          services: servicesData.length, 
+          providers: providersData.length 
+        });
+        
         setServices(servicesData);
         setProviders(providersData);
         
