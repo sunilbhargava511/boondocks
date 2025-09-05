@@ -18,19 +18,7 @@ export async function GET(req: NextRequest) {
       where: { 
         isActive: true 
       },
-      select: {
-        id: true,
-        providerId: true,
-        firstName: true,
-        lastName: true,
-        displayName: true,
-        bio: true,
-        avatarInitials: true,
-        notAcceptingNewClients: true,
-        cashOnly: true,
-        noKidsUnder: true,
-        conversationPreference: true,
-        specialNotes: true,
+      include: {
         availability: true
       },
       orderBy: [
