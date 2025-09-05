@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
           }
         }
       },
-      orderBy: { incidentDate: 'desc' }
+      orderBy: { createdAt: 'desc' }
     });
 
     return NextResponse.json({ incidents });
@@ -54,8 +54,11 @@ export async function POST(req: NextRequest) {
         customerId,
         appointmentId,
         notes: notes || '',
-        incidentDate: new Date(),
-        recordedBy: `${provider.firstName} ${provider.lastName}`
+        appointmentDate: new Date(),
+        serviceName: 'Unknown',
+        customerEmail: customerEmail || '',
+        customerPhone: customerPhone || '',
+        markedBy: `${provider.firstName} ${provider.lastName}`
       }
     });
 
