@@ -612,28 +612,19 @@ export default function CustomerManagement() {
               <div className="template-download">
                 <p>Need a template? 
                   <a 
-                    href="/api/customers/import" 
-                    target="_blank"
+                    href="/api/customers/template" 
+                    download="customer-import-template.csv"
                     className="template-link"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      fetch('/api/customers/import', { method: 'PUT' })
-                        .then(response => response.blob())
-                        .then(blob => {
-                          const url = window.URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = 'customer-import-template.csv';
-                          document.body.appendChild(a);
-                          a.click();
-                          window.URL.revokeObjectURL(url);
-                          document.body.removeChild(a);
-                        });
-                    }}
                   >
-                    Download Import Template
+                    Download CSV Template
                   </a>
                 </p>
+                <div className="template-info">
+                  <small>
+                    The template includes sample data and instructions. 
+                    Required fields: First Name, Last Name, Email.
+                  </small>
+                </div>
               </div>
 
               <div className="dialog-actions">
@@ -1200,6 +1191,13 @@ export default function CustomerManagement() {
 
         .template-link:hover {
           text-decoration: underline;
+        }
+
+        .template-info {
+          margin-top: 8px;
+          color: #666;
+          font-size: 13px;
+          line-height: 1.4;
         }
 
         .export-options label {
