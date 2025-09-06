@@ -430,6 +430,7 @@ export default function CustomerManagement() {
                       <th>Name</th>
                       <th>Contact</th>
                       <th>Status</th>
+                      <th>Customer Since</th>
                       <th>Last Visit</th>
                       <th>Actions</th>
                     </tr>
@@ -453,6 +454,9 @@ export default function CustomerManagement() {
                           <span className={`status-badge ${customer.accountStatus}`}>
                             {customer.accountStatus}
                           </span>
+                        </td>
+                        <td className="customer-since">
+                          {new Date(customer.customerSince || customer.createdAt).toLocaleDateString()}
                         </td>
                         <td className="last-visit">
                           {customer.lastVisit ? new Date(customer.lastVisit).toLocaleDateString() : 'Never'}
@@ -506,7 +510,7 @@ export default function CustomerManagement() {
                     )}
 
                     <div className="customer-meta">
-                      <span>Created: {new Date(customer.createdAt).toLocaleDateString()}</span>
+                      <span>Customer Since: {new Date(customer.customerSince || customer.createdAt).toLocaleDateString()}</span>
                       {customer.lastVisit && (
                         <span>Last Visit: {new Date(customer.lastVisit).toLocaleDateString()}</span>
                       )}

@@ -15,6 +15,7 @@ export interface Customer {
   noShowCount: number;
   cancellationCount: number;
   accountStatus: 'active' | 'suspended' | 'blocked';
+  customerSince: Date;
   createdAt: Date;
   updatedAt: Date;
   lastVisit?: Date;

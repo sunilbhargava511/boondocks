@@ -12,8 +12,8 @@ datasource db {
 model Customer {
   id                    String   @id @default(uuid())
   simplybookId          Int?     @unique @map("simplybook_id")
-  email                 String   @unique
-  phone                 String
+  email                 String
+  phone                 String   @unique
   firstName             String   @map("first_name")
   lastName              String   @map("last_name")
   dateOfBirth          DateTime? @map("date_of_birth")
@@ -25,6 +25,7 @@ model Customer {
   noShowCount          Int      @default(0) @map("no_show_count")
   cancellationCount    Int      @default(0) @map("cancellation_count")
   accountStatus        String   @default("active") @map("account_status") // active, suspended, blocked
+  customerSince        DateTime @default(now()) @map("customer_since") // When they became a customer
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
   lastVisit            DateTime? @map("last_visit")

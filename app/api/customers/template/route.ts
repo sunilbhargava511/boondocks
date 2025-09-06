@@ -102,7 +102,7 @@ export async function GET() {
     const instructions = [
       '# Customer Import Template',
       '# Fill in your customer data below the sample rows',
-      '# Required fields: First Name, Last Name, Email',
+      '# Required fields: First Name, Last Name, Phone',
       '# Date format: YYYY-MM-DD (e.g., 1985-01-15)',
       '# Conversation Level: 0=Silent, 1=Minimal, 2=Normal, 3=Chatty',
       '# Boolean fields: true/false (Marketing Consent, SMS Consent, Email Consent)',

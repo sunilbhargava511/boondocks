@@ -103,8 +103,21 @@ export class CustomerManager {
   }
 
   async getCustomerByEmail(email: string): Promise<Customer | null> {
-    return await this.prisma.customer.findUnique({
+    return await this.prisma.customer.findFirst({
       where: { email },
+      include: {
+        preferences: true,
+        tags: true,
+        appointments: {
+          orderBy: { appointmentDate: 'desc' }
+        },
+      },
+    });
+  }
+
+  async getCustomerByPhone(phone: string): Promise<Customer | null> {
+    return await this.prisma.customer.findUnique({
+      where: { phone },
       include: {
         preferences: true,
         tags: true,
@@ -804,14 +817,14 @@ export class CustomerManager {
   async createCustomerFromCSVRow(row: CSVCustomerRow, importJobId: string): Promise<{ success: boolean; error?: string; customerId?: string }> {
     try {
       // Validate required fields
-      if (!row.email || !row.firstName || !row.lastName) {
-        return { success: false, error: 'Missing required fields: email, firstName, or lastName' };
+      if (!row.phone || !row.firstName || !row.lastName) {
+        return { success: false, error: 'Missing required fields: phone, firstName, or lastName' };
       }
 
       // Check for existing customer
-      const existing = await this.getCustomerByEmail(row.email);
+      const existing = await this.getCustomerByPhone(row.phone);
       if (existing) {
-        return { success: false, error: `Customer with email ${row.email} already exists` };
+        return { success: false, error: `Customer with phone ${row.phone} already exists` };
       }
 
       // Parse and validate data

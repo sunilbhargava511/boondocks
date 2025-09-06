@@ -316,6 +316,12 @@ export default function CustomerProfile({ customer, onUpdate, onClose }: Custome
               <h3>Customer Metrics</h3>
               <div className="metrics-grid">
                 <div className="metric-card">
+                  <div className="metric-value">
+                    {new Date(customer.customerSince || customer.createdAt).toLocaleDateString()}
+                  </div>
+                  <div className="metric-label">Customer Since</div>
+                </div>
+                <div className="metric-card">
                   <div className="metric-value">{customer.noShowCount}</div>
                   <div className="metric-label">No-Shows</div>
                 </div>

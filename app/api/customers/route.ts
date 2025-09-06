@@ -5,6 +5,8 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('q');
+    const phone = searchParams.get('phone');
+    const email = searchParams.get('email');
     const limit = parseInt(searchParams.get('limit') || '50');
     const page = parseInt(searchParams.get('page') || '1');
     const offset = (page - 1) * limit;
@@ -23,6 +25,17 @@ export async function GET(req: NextRequest) {
     const providerId = searchParams.get('providerId');
     const activeOnly = searchParams.get('activeOnly') === 'true';
     const recentMonths = searchParams.get('recentMonths') ? parseInt(searchParams.get('recentMonths')!) : undefined;
+
+    // Handle direct phone or email lookup
+    if (phone) {
+      const customer = await customerManager.getCustomerByPhone(phone);
+      return NextResponse.json({ customer });
+    }
+
+    if (email) {
+      const customer = await customerManager.getCustomerByEmail(email);
+      return NextResponse.json({ customer });
+    }
 
     let customers;
     let totalCount = 0;
@@ -82,18 +95,18 @@ export async function POST(req: NextRequest) {
     const data = await req.json();
 
     // Validate required fields
-    if (!data.firstName || !data.lastName || !data.email) {
+    if (!data.firstName || !data.lastName || !data.phone) {
       return NextResponse.json(
-        { error: 'Missing required fields: firstName, lastName, email' },
+        { error: 'Missing required fields: firstName, lastName, phone' },
         { status: 400 }
       );
     }
 
-    // Check if customer already exists
-    const existingCustomer = await customerManager.getCustomerByEmail(data.email);
+    // Check if customer already exists by phone
+    const existingCustomer = await customerManager.getCustomerByPhone(data.phone);
     if (existingCustomer) {
       return NextResponse.json(
-        { error: 'Customer with this email already exists' },
+        { error: 'Customer with this phone number already exists' },
         { status: 409 }
       );
     }
