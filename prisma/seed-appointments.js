@@ -42,6 +42,9 @@ async function seedAppointments() {
 
   const appointments = [];
 
+  // Track booked slots to prevent double bookings: "providerId-YYYY-MM-DD-HH:MM"
+  const bookedSlots = new Set();
+
   // Generate appointments for July 2025 (past appointments, mostly completed)
   for (let day = 1; day <= 31; day++) {
     // Skip Sundays (day 6 in 2025 July starts on Tuesday)
@@ -50,22 +53,35 @@ async function seedAppointments() {
     
     if (dayOfWeek === 0) continue; // Skip Sundays
     
-    // Generate 8-15 appointments per day
-    const appointmentsPerDay = Math.floor(Math.random() * 8) + 8;
+    // Generate 8-15 appointments per day, but ensure no double bookings
+    const maxAttempts = 50; // Prevent infinite loops
+    let appointmentsCreated = 0;
+    let attempts = 0;
     
-    for (let i = 0; i < appointmentsPerDay; i++) {
+    while (appointmentsCreated < 15 && attempts < maxAttempts) {
+      attempts++;
+      
       const provider = providers[Math.floor(Math.random() * providers.length)];
       const service = services[Math.floor(Math.random() * services.length)];
       const customer = customers[Math.floor(Math.random() * customers.length)];
       const timeSlot = timeSlots[Math.floor(Math.random() * timeSlots.length)];
+      
+      const appointmentDate = new Date(2025, 6, day, Math.floor(timeSlot), (timeSlot % 1) * 60);
+      const slotKey = `${provider.id}-${appointmentDate.getFullYear()}-${(appointmentDate.getMonth() + 1).toString().padStart(2, '0')}-${appointmentDate.getDate().toString().padStart(2, '0')}-${appointmentDate.getHours().toString().padStart(2, '0')}:${appointmentDate.getMinutes().toString().padStart(2, '0')}`;
+      
+      // Skip if this provider already has an appointment at this time
+      if (bookedSlots.has(slotKey)) {
+        continue;
+      }
+      
+      // Mark this slot as booked
+      bookedSlots.add(slotKey);
       
       // July appointments are mostly completed or cancelled
       let status = 'completed';
       const statusRoll = Math.random();
       if (statusRoll < 0.1) status = 'cancelled';
       else if (statusRoll < 0.15) status = 'no_show';
-      
-      const appointmentDate = new Date(2025, 6, day, Math.floor(timeSlot), (timeSlot % 1) * 60);
       
       appointments.push({
         customerId: customer.id,
@@ -80,6 +96,8 @@ async function seedAppointments() {
         bookingCode: `BOOK${Date.now()}${Math.floor(Math.random() * 1000)}`,
         notes: Math.random() > 0.7 ? 'Regular customer' : null
       });
+      
+      appointmentsCreated++;
     }
   }
 
@@ -90,14 +108,29 @@ async function seedAppointments() {
     
     if (dayOfWeek === 0) continue; // Skip Sundays
     
-    // Generate 10-20 appointments per day
-    const appointmentsPerDay = Math.floor(Math.random() * 11) + 10;
+    // Generate 10-20 appointments per day, but ensure no double bookings
+    const maxAttempts = 60; // Prevent infinite loops
+    let appointmentsCreated = 0;
+    let attempts = 0;
     
-    for (let i = 0; i < appointmentsPerDay; i++) {
+    while (appointmentsCreated < 20 && attempts < maxAttempts) {
+      attempts++;
+      
       const provider = providers[Math.floor(Math.random() * providers.length)];
       const service = services[Math.floor(Math.random() * services.length)];
       const customer = customers[Math.floor(Math.random() * customers.length)];
       const timeSlot = timeSlots[Math.floor(Math.random() * timeSlots.length)];
+      
+      const appointmentDate = new Date(2025, 8, day, Math.floor(timeSlot), (timeSlot % 1) * 60);
+      const slotKey = `${provider.id}-${appointmentDate.getFullYear()}-${(appointmentDate.getMonth() + 1).toString().padStart(2, '0')}-${appointmentDate.getDate().toString().padStart(2, '0')}-${appointmentDate.getHours().toString().padStart(2, '0')}:${appointmentDate.getMinutes().toString().padStart(2, '0')}`;
+      
+      // Skip if this provider already has an appointment at this time
+      if (bookedSlots.has(slotKey)) {
+        continue;
+      }
+      
+      // Mark this slot as booked
+      bookedSlots.add(slotKey);
       
       // September appointments are mostly confirmed, some completed for early days
       let status = 'confirmed';
@@ -110,8 +143,6 @@ async function seedAppointments() {
         const statusRoll = Math.random();
         if (statusRoll < 0.05) status = 'cancelled';
       }
-      
-      const appointmentDate = new Date(2025, 8, day, Math.floor(timeSlot), (timeSlot % 1) * 60);
       
       appointments.push({
         customerId: customer.id,
@@ -126,6 +157,8 @@ async function seedAppointments() {
         bookingCode: `BOOK${Date.now()}${Math.floor(Math.random() * 1000)}`,
         notes: Math.random() > 0.8 ? 'First time customer' : Math.random() > 0.6 ? 'Regular' : null
       });
+      
+      appointmentsCreated++;
     }
   }
 
@@ -134,13 +167,28 @@ async function seedAppointments() {
   const todayAppointments = [];
   
   for (const provider of providers) {
-    // Each provider gets 5-8 appointments today
-    const appointmentsCount = Math.floor(Math.random() * 4) + 5;
+    // Each provider gets 5-8 appointments today, but ensure no double bookings
+    const maxAttempts = 30; // Prevent infinite loops
+    let appointmentsCreated = 0;
+    let attempts = 0;
     
-    for (let i = 0; i < appointmentsCount; i++) {
+    while (appointmentsCreated < 8 && attempts < maxAttempts) {
+      attempts++;
+      
       const service = services[Math.floor(Math.random() * services.length)];
       const customer = customers[Math.floor(Math.random() * customers.length)];
       const timeSlot = timeSlots[Math.floor(Math.random() * timeSlots.length)];
+      
+      const appointmentDate = new Date(2025, 8, 6, Math.floor(timeSlot), (timeSlot % 1) * 60);
+      const slotKey = `${provider.id}-${appointmentDate.getFullYear()}-${(appointmentDate.getMonth() + 1).toString().padStart(2, '0')}-${appointmentDate.getDate().toString().padStart(2, '0')}-${appointmentDate.getHours().toString().padStart(2, '0')}:${appointmentDate.getMinutes().toString().padStart(2, '0')}`;
+      
+      // Skip if this provider already has an appointment at this time
+      if (bookedSlots.has(slotKey)) {
+        continue;
+      }
+      
+      // Mark this slot as booked
+      bookedSlots.add(slotKey);
       
       // Mix of statuses for today
       let status = 'confirmed';
@@ -150,8 +198,6 @@ async function seedAppointments() {
       } else if (timeSlot === currentHour) {
         status = 'in_progress';
       }
-      
-      const appointmentDate = new Date(2025, 8, 6, Math.floor(timeSlot), (timeSlot % 1) * 60);
       
       todayAppointments.push({
         customerId: customer.id,
@@ -166,6 +212,8 @@ async function seedAppointments() {
         bookingCode: `BOOK${Date.now()}${Math.floor(Math.random() * 1000)}`,
         notes: null
       });
+      
+      appointmentsCreated++;
     }
   }
 
