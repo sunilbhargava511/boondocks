@@ -8,9 +8,12 @@ interface CustomerInfo {
   lastName: string;
   email: string;
   phone: string;
+  dateOfBirth?: string;
+  conversationPreference?: number;
   notes?: string;
   marketingConsent: boolean;
   smsConsent: boolean;
+  emailConsent: boolean;
 }
 
 interface CustomerInfoFormProps {
@@ -18,22 +21,29 @@ interface CustomerInfoFormProps {
   onBack: () => void;
   isSubmitting?: boolean;
   prefilledEmail?: string;
+  prefilledPhone?: string;
   emailFromCookie?: boolean;
 }
 
-export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefilledEmail, emailFromCookie }: CustomerInfoFormProps) {
+export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefilledEmail, prefilledPhone, emailFromCookie }: CustomerInfoFormProps) {
   const [formData, setFormData] = useState<CustomerInfo>({
     firstName: '',
     lastName: '',
-    email: '',
-    phone: '',
+    email: prefilledEmail || '',
+    phone: prefilledPhone || '',
+    dateOfBirth: '',
+    conversationPreference: 2, // Default to normal conversation level
     notes: '',
     marketingConsent: false,
     smsConsent: true, // Default to true for SMS reminders
+    emailConsent: false,
   });
 
   const [errors, setErrors] = useState<Partial<CustomerInfo>>({});
   const [showChangeEmail, setShowChangeEmail] = useState(false);
+  const [phoneStep, setPhoneStep] = useState(!prefilledPhone); // Skip phone step if phone already provided
+  const [isExistingCustomer, setIsExistingCustomer] = useState(false);
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
 
   // Set prefilled customer data from cookie or fetch from server
   useEffect(() => {
@@ -79,6 +89,63 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
         .catch(error => console.error('Error checking customer email:', error));
     }
   }, [prefilledEmail]);
+
+  const checkPhoneNumber = async (phone: string) => {
+    if (!phone.trim()) return;
+    
+    setIsCheckingPhone(true);
+    try {
+      // Clean phone number for lookup
+      const cleanPhone = phone.trim().replace(/[^\d+]/g, '');
+      
+      const response = await fetch(`/api/customers?phone=${encodeURIComponent(cleanPhone)}`);
+      const data = await response.json();
+      
+      if (response.ok && data.customer) {
+        // Existing customer found
+        setIsExistingCustomer(true);
+        setFormData(prev => ({
+          ...prev,
+          firstName: data.customer.firstName,
+          lastName: data.customer.lastName,
+          email: data.customer.email,
+          phone: cleanPhone,
+          dateOfBirth: data.customer.dateOfBirth ? new Date(data.customer.dateOfBirth).toISOString().split('T')[0] : '',
+          conversationPreference: data.customer.conversationPreference,
+          notes: prev.notes, // Keep any new notes
+          marketingConsent: data.customer.marketingConsent,
+          smsConsent: data.customer.smsConsent,
+          emailConsent: data.customer.emailConsent,
+        }));
+        // Skip to booking confirmation for existing customers
+        onSubmit({
+          ...formData,
+          firstName: data.customer.firstName,
+          lastName: data.customer.lastName,
+          email: data.customer.email,
+          phone: cleanPhone,
+          dateOfBirth: data.customer.dateOfBirth ? new Date(data.customer.dateOfBirth).toISOString().split('T')[0] : '',
+          conversationPreference: data.customer.conversationPreference,
+          marketingConsent: data.customer.marketingConsent,
+          smsConsent: data.customer.smsConsent,
+          emailConsent: data.customer.emailConsent,
+        });
+      } else {
+        // New customer - proceed to full information collection
+        setIsExistingCustomer(false);
+        setFormData(prev => ({ ...prev, phone: cleanPhone }));
+        setPhoneStep(false);
+      }
+    } catch (error) {
+      console.error('Error checking phone number:', error);
+      // On error, proceed as new customer
+      setIsExistingCustomer(false);
+      setFormData(prev => ({ ...prev, phone: phone.trim() }));
+      setPhoneStep(false);
+    } finally {
+      setIsCheckingPhone(false);
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Partial<CustomerInfo> = {};
@@ -143,31 +210,69 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
     }
   };
 
+  // Phone-first step
+  if (phoneStep) {
+    return (
+      <div className="section">
+        <h3 className="section-title">Let's Find Your Account</h3>
+        <div className="phone-lookup-form">
+          <div className="form-group">
+            <label htmlFor="phone" className="form-label">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              value={formData.phone}
+              onChange={handleChange('phone')}
+              className={`form-input ${errors.phone ? 'error' : ''}`}
+              placeholder="(555) 123-4567"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  checkPhoneNumber(formData.phone);
+                }
+              }}
+            />
+            {errors.phone && (
+              <span className="error-message">{errors.phone}</span>
+            )}
+            <div className="form-help">
+              We'll check if you have an account with us to speed up your booking.
+            </div>
+          </div>
+          
+          <div className="form-actions">
+            <button 
+              type="button" 
+              onClick={onBack} 
+              className="btn-secondary"
+              disabled={isCheckingPhone}
+            >
+              ← Back to Time Selection
+            </button>
+            <button 
+              type="button" 
+              onClick={() => checkPhoneNumber(formData.phone)}
+              className={`btn-primary ${isCheckingPhone ? 'loading' : ''}`}
+              disabled={isCheckingPhone || !formData.phone.trim()}
+            >
+              {isCheckingPhone ? 'Checking...' : 'Continue'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Full information form for new customers
   return (
     <div className="section">
-      <h3 className="section-title">Your Information</h3>
-      {!emailFromCookie && (
-        <div className="existing-customer-prompt" style={{
-          background: '#f0f9ff',
-          border: '1px solid #0ea5e9',
-          borderRadius: '8px',
-          padding: '12px',
-          marginBottom: '20px',
-          textAlign: 'center'
-        }}>
-          <p style={{ margin: 0, fontSize: '14px', color: '#0369a1' }}>
-            Already have an account? 
-            <a href="/login" style={{ 
-              marginLeft: '8px',
-              color: '#0ea5e9',
-              fontWeight: 'bold',
-              textDecoration: 'underline'
-            }}>
-              Sign in to book faster
-            </a>
-          </p>
-        </div>
-      )}
+      <h3 className="section-title">Complete Your Information</h3>
+      <div className="new-customer-welcome">
+        <p>Welcome! We'll collect a bit more information to create your account and make future bookings faster.</p>
+      </div>
+      
       <div className="customer-info-form">
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name Fields */}
@@ -211,74 +316,15 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
           <div className="form-group">
             <label htmlFor="email" className="form-label">
               Email Address *
-              {emailFromCookie && !showChangeEmail && (
-                <span style={{
-                  fontSize: '11px',
-                  color: '#059669',
-                  fontWeight: 'normal',
-                  marginLeft: '8px',
-                  fontStyle: 'italic'
-                }}>
-                  (remembered from previous visit)
-                </span>
-              )}
             </label>
-            {emailFromCookie && !showChangeEmail ? (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px',
-                background: '#f0fdf4',
-                border: '2px solid #22c55e',
-                borderRadius: '6px'
-              }}>
-                <div style={{
-                  flex: '1',
-                  fontFamily: 'Courier New, monospace',
-                  fontSize: '14px',
-                  color: '#166534',
-                  fontWeight: '600'
-                }}>
-                  {formData.email}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowChangeEmail(true)}
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid #22c55e',
-                    color: '#166534',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    fontWeight: '600'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.background = '#22c55e';
-                    e.currentTarget.style.color = 'white';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#166534';
-                  }}
-                >
-                  Change email
-                </button>
-              </div>
-            ) : (
-              <input
-                type="email"
-                id="email"
-                value={formData.email}
-                onChange={handleChange('email')}
-                className={`form-input ${errors.email ? 'error' : ''}`}
-                placeholder="your.email@example.com"
-              />
-            )}
+            <input
+              type="email"
+              id="email"
+              value={formData.email}
+              onChange={handleChange('email')}
+              className={`form-input ${errors.email ? 'error' : ''}`}
+              placeholder="your.email@example.com"
+            />
             {errors.email && (
               <span className="error-message">{errors.email}</span>
             )}
@@ -293,18 +339,65 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
               id="phone"
               value={formData.phone}
               onChange={handleChange('phone')}
-              className={`form-input ${errors.phone ? 'error' : ''}`}
-              placeholder="(555) 123-4567"
+              className="form-input"
+              disabled={true}
+              style={{ background: '#f5f5f5', color: '#666' }}
             />
-            {errors.phone && (
-              <span className="error-message">{errors.phone}</span>
-            )}
+            <div className="form-help">Phone number confirmed</div>
+          </div>
+
+          {/* Date of Birth */}
+          <div className="form-group">
+            <label htmlFor="dateOfBirth" className="form-label">
+              Date of Birth (Optional)
+            </label>
+            <input
+              type="date"
+              id="dateOfBirth"
+              value={formData.dateOfBirth}
+              onChange={handleChange('dateOfBirth')}
+              className="form-input"
+              max={new Date().toISOString().split('T')[0]}
+            />
+            <div className="form-help">Helps us provide age-appropriate services</div>
+          </div>
+
+          {/* Conversation Preference */}
+          <div className="form-group">
+            <label className="form-label">
+              Conversation Preference
+            </label>
+            <div className="conversation-options">
+              {[
+                { value: 0, label: 'Silent', desc: 'I prefer minimal conversation' },
+                { value: 1, label: 'Minimal', desc: 'Just the essentials' },
+                { value: 2, label: 'Normal', desc: 'Friendly conversation is fine' },
+                { value: 3, label: 'Chatty', desc: 'I enjoy good conversation' }
+              ].map((option) => (
+                <label key={option.value} className="conversation-option">
+                  <input
+                    type="radio"
+                    name="conversationPreference"
+                    value={option.value}
+                    checked={formData.conversationPreference === option.value}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      conversationPreference: parseInt(e.target.value)
+                    }))}
+                  />
+                  <span className="conversation-label">
+                    <strong>{option.label}</strong>
+                    <small>{option.desc}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
           </div>
 
           {/* Optional Notes */}
           <div className="form-group">
             <label htmlFor="notes" className="form-label">
-              Special Requests or Notes (Optional)
+              Special Requests, Allergies, or Preferences (Optional)
             </label>
             <textarea
               id="notes"
@@ -312,7 +405,7 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
               onChange={handleChange('notes')}
               className="form-input"
               rows={3}
-              placeholder="Any special requests, allergies, or preferences..."
+              placeholder="Any allergies, styling preferences, or special instructions..."
             />
           </div>
 
@@ -334,6 +427,19 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
             <div className="checkbox-group">
               <input
                 type="checkbox"
+                id="emailConsent"
+                checked={formData.emailConsent}
+                onChange={handleChange('emailConsent')}
+                className="checkbox-input"
+              />
+              <label htmlFor="emailConsent" className="checkbox-label">
+                Send me email confirmations and appointment updates
+              </label>
+            </div>
+
+            <div className="checkbox-group">
+              <input
+                type="checkbox"
                 id="marketingConsent"
                 checked={formData.marketingConsent}
                 onChange={handleChange('marketingConsent')}
@@ -349,18 +455,18 @@ export default function CustomerInfoForm({ onSubmit, onBack, isSubmitting, prefi
           <div className="form-actions">
             <button 
               type="button" 
-              onClick={onBack} 
+              onClick={() => setPhoneStep(true)}
               className="btn-secondary"
               disabled={isSubmitting}
             >
-              ← Back to Time Selection
+              ← Back
             </button>
             <button 
               type="submit" 
               className={`btn-primary ${isSubmitting ? 'loading' : ''}`}
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Booking...' : 'Complete Booking'}
+              {isSubmitting ? 'Creating Account...' : 'Complete Booking'}
             </button>
           </div>
         </form>

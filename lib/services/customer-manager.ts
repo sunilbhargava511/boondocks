@@ -116,10 +116,9 @@ export class CustomerManager {
   }
 
   async getCustomerByPhone(phone: string): Promise<Customer | null> {
-    return await this.prisma.customer.findUnique({
+    return await this.prisma.customer.findFirst({
       where: { phone },
       include: {
-        preferences: true,
         tags: true,
         appointments: {
           orderBy: { appointmentDate: 'desc' }

@@ -169,7 +169,7 @@ async function processImportJob(
           firstName: mappedRow.firstName || mappedRow['First Name'] || '',
           lastName: mappedRow.lastName || mappedRow['Last Name'] || '',
           email: mappedRow.email || mappedRow.Email || '',
-          phone: mappedRow.phone || mappedRow.Phone || '',
+          phone: mappedRow.phone || mappedRow.Phone || mappedRow.Mobile || '',
           dateOfBirth: mappedRow.dateOfBirth || mappedRow['Date of Birth'],
           conversationPreference: mappedRow.conversationPreference || mappedRow['Conversation Level'],
           preferredProvider: mappedRow.preferredProvider || mappedRow['Preferred Provider'],
@@ -213,7 +213,6 @@ async function processImportJob(
             successCount,
             errorCount: errors.length,
             errors: errors.slice(0, 100), // Limit stored errors
-            results: JSON.stringify({ created: createdCount, updated: updatedCount, skipped: skippedCount }),
           },
         });
       }
@@ -228,7 +227,6 @@ async function processImportJob(
         successCount,
         errorCount: errors.length,
         errors: errors.slice(0, 100),
-        results: JSON.stringify({ created: createdCount, updated: updatedCount, skipped: skippedCount }),
         completedAt: new Date(),
       },
     });

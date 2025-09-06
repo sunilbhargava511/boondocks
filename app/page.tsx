@@ -6,7 +6,7 @@ import { Service, Provider } from '@/lib/types';
 import { loadServices, loadProviders, isProviderAvailableOnDay } from '@/lib/data';
 import { isGuestBookingAllowed, getStoredEmail } from '@/lib/guest-cookie';
 import CustomerInfoForm from '@/components/CustomerInfoForm';
-import EmailGate from '@/components/EmailGate';
+import PhoneGate from '@/components/PhoneGate';
 import CookieManager from '@/components/CookieManager';
 import AppointmentManagementPopup from '@/components/AppointmentManagementPopup';
 
@@ -23,12 +23,15 @@ interface CustomerInfo {
   lastName: string;
   email: string;
   phone: string;
+  dateOfBirth?: string;
+  conversationPreference?: number;
   notes?: string;
   marketingConsent: boolean;
   smsConsent: boolean;
+  emailConsent: boolean;
 }
 
-type BookingStep = 'email-gate' | 'service-selection' | 'customer-info' | 'confirmation';
+type BookingStep = 'phone-gate' | 'service-selection' | 'customer-info' | 'confirmation';
 
 // Generate deterministic seed for consistent availability
 const getSlotSeed = (date: Date, provider?: Provider, service?: Service): number => {
@@ -153,10 +156,12 @@ export default function BookingWidget() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [timeSlots, setTimeSlots] = useState<{time: string, available: boolean}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState<BookingStep>('email-gate');
+  const [currentStep, setCurrentStep] = useState<BookingStep>('phone-gate');
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [userPhone, setUserPhone] = useState<string>('');
+  const [isExistingCustomer, setIsExistingCustomer] = useState<boolean>(false);
   
   // Appointment management popup state
   const [showAppointmentPopup, setShowAppointmentPopup] = useState(false);
@@ -318,8 +323,19 @@ export default function BookingWidget() {
   };
 
   const selectTime = (time: string) => {
-    setBooking(prev => ({ ...prev, time }));
-    setCurrentStep('customer-info');
+    const updatedBooking = { ...booking, time };
+    setBooking(updatedBooking);
+    
+    // For existing customers, check if we have all booking info and can book directly
+    if (isExistingCustomer && customerInfo && updatedBooking.service && updatedBooking.provider && updatedBooking.date) {
+      // We have all the info, now actually make the booking
+      setTimeout(() => {
+        handleBookingSubmit();
+      }, 100); // Small delay to ensure state is updated
+    } else {
+      // For new customers, collect info first
+      setCurrentStep('customer-info');
+    }
   };
 
   const getServicesByCategory = (category: string) => {
@@ -343,11 +359,12 @@ export default function BookingWidget() {
       
       let customer;
       if (customerResponse.status === 400 || customerResponse.status === 409) {
-        // Customer might already exist, try to find by email
-        const searchResponse = await fetch(`/api/customers?email=${encodeURIComponent(info.email)}`);
+        // Customer might already exist, try to find by phone
+        const cleanPhone = info.phone.trim().replace(/[^\d+]/g, '');
+        const searchResponse = await fetch(`/api/customers?phone=${encodeURIComponent(cleanPhone)}`);
         const searchData = await searchResponse.json();
-        if (searchData.customers && searchData.customers.length > 0) {
-          customer = searchData.customers[0];
+        if (searchData.customer) {
+          customer = searchData.customer;
         } else {
           throw new Error('Failed to create or find customer');
         }
@@ -401,6 +418,63 @@ export default function BookingWidget() {
     }
   };
 
+  const handleBookingSubmit = async () => {
+    if (!customerInfo || !booking.service || !booking.provider || !booking.date || !booking.time) {
+      console.error('Missing booking information');
+      return;
+    }
+
+    setIsSubmittingBooking(true);
+    
+    try {
+      // Find the customer by phone to get their ID
+      const customerResponse = await fetch(`/api/customers?phone=${encodeURIComponent(userPhone)}`);
+      const customerData = await customerResponse.json();
+      
+      if (!customerData.customer) {
+        throw new Error('Customer not found');
+      }
+
+      // Create appointment for existing customer
+      const appointmentDate = new Date(booking.date);
+      const [time, period] = booking.time.split(' ');
+      const [hours, minutes] = time.split(':').map(Number);
+      let adjustedHours = hours;
+      if (period === 'PM' && hours !== 12) adjustedHours += 12;
+      if (period === 'AM' && hours === 12) adjustedHours = 0;
+      
+      appointmentDate.setHours(adjustedHours, minutes, 0, 0);
+      
+      const appointmentResponse = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: customerData.customer.id,
+          serviceId: booking.service.id,
+          serviceName: booking.service.name,
+          providerId: booking.provider.id,
+          providerName: booking.provider.name,
+          appointmentDate: appointmentDate.toISOString(),
+          duration: booking.service.duration,
+          price: booking.price,
+          status: 'confirmed',
+          notes: customerInfo.notes || '',
+        }),
+      });
+      
+      if (!appointmentResponse.ok) {
+        throw new Error('Failed to create appointment');
+      }
+      
+      setCurrentStep('confirmation');
+    } catch (error) {
+      console.error('Booking error:', error);
+      alert('Sorry, there was an error processing your booking. Please try again or call us directly.');
+    } finally {
+      setIsSubmittingBooking(false);
+    }
+  };
+
   const handleBackToTimeSelection = () => {
     setCurrentStep('service-selection');
   };
@@ -412,14 +486,35 @@ export default function BookingWidget() {
     setTimeSlots([]);
   };
 
-  const handleGuestProceed = () => {
-    // Passwordless booking cookie already set in EmailGate component
-    setCurrentStep('service-selection');
-  };
-
-  const handleExistingUserProceed = async (email: string) => {
-    setUserEmail(email);
-    // All users proceed to service selection (no magic links)
+  const handlePhoneSubmit = async (phone: string, isExisting: boolean) => {
+    setUserPhone(phone);
+    setIsExistingCustomer(isExisting);
+    
+    if (isExisting) {
+      // Load existing customer data
+      try {
+        const response = await fetch(`/api/customers?phone=${encodeURIComponent(phone)}`);
+        const data = await response.json();
+        if (data.customer) {
+          setCustomerInfo({
+            firstName: data.customer.firstName,
+            lastName: data.customer.lastName,
+            email: data.customer.email,
+            phone: data.customer.phone,
+            dateOfBirth: data.customer.dateOfBirth ? new Date(data.customer.dateOfBirth).toISOString().split('T')[0] : '',
+            conversationPreference: data.customer.conversationPreference,
+            notes: data.customer.notes || '',
+            marketingConsent: data.customer.marketingConsent,
+            smsConsent: data.customer.smsConsent,
+            emailConsent: data.customer.emailConsent,
+          });
+          setUserEmail(data.customer.email);
+        }
+      } catch (error) {
+        console.error('Error loading customer data:', error);
+      }
+    }
+    
     setCurrentStep('service-selection');
   };
 
@@ -437,12 +532,12 @@ export default function BookingWidget() {
     );
   }
 
-  // Show email gate for first-time users
-  if (currentStep === 'email-gate') {
+  // Show phone gate for first-time users
+  if (currentStep === 'phone-gate') {
     return (
-      <EmailGate
-        onGuestProceed={handleGuestProceed}
-        onExistingUserProceed={handleExistingUserProceed}
+      <PhoneGate
+        onGuestProceed={(phone) => handlePhoneSubmit(phone, false)}
+        onExistingUserProceed={(phone) => handlePhoneSubmit(phone, true)}
       />
     );
   }
@@ -470,6 +565,7 @@ export default function BookingWidget() {
               onBack={handleBackToTimeSelection}
               isSubmitting={isSubmittingBooking}
               prefilledEmail={userEmail}
+              prefilledPhone={userPhone}
               emailFromCookie={!!userEmail && isGuestBookingAllowed()}
             />
           )}
@@ -1981,6 +2077,131 @@ export default function BookingWidget() {
           .footer-content {
             flex-direction: column;
             text-align: center;
+          }
+        }
+
+        /* New customer form styles */
+        .new-customer-welcome {
+          background: #f0f9ff;
+          border: 1px solid #0ea5e9;
+          border-radius: 8px;
+          padding: 16px;
+          margin-bottom: 24px;
+          text-align: center;
+        }
+
+        .new-customer-welcome p {
+          margin: 0;
+          color: #0369a1;
+          font-size: 14px;
+          line-height: 1.4;
+        }
+
+        .phone-lookup-form {
+          max-width: 400px;
+          margin: 0 auto;
+        }
+
+        .form-help {
+          font-size: 12px;
+          color: #666;
+          margin-top: 6px;
+          line-height: 1.4;
+        }
+
+        .conversation-options {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-top: 8px;
+        }
+
+        .conversation-option {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 12px;
+          border: 2px solid #e5e5e5;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .conversation-option:hover {
+          border-color: #8b7355;
+          background: #f9f9f9;
+        }
+
+        .conversation-option input[type="radio"] {
+          margin-top: 2px;
+          width: 16px;
+          height: 16px;
+          accent-color: #c41e3a;
+        }
+
+        .conversation-option input[type="radio"]:checked + .conversation-label {
+          color: #2c2c2c;
+        }
+
+        .conversation-option:has(input[type="radio"]:checked) {
+          border-color: #c41e3a;
+          background: #fef2f2;
+        }
+
+        .conversation-label {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .conversation-label strong {
+          font-family: 'Oswald', sans-serif;
+          font-size: 14px;
+          color: #2c2c2c;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .conversation-label small {
+          font-size: 12px;
+          color: #666;
+          line-height: 1.3;
+        }
+
+        /* Phone-first step loading state */
+        .btn-primary.loading::after {
+          content: '';
+          width: 12px;
+          height: 12px;
+          border: 2px solid transparent;
+          border-top: 2px solid currentColor;
+          border-radius: 50%;
+          display: inline-block;
+          animation: spin 1s linear infinite;
+          margin-left: 8px;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @media (max-width: 600px) {
+          .conversation-options {
+            gap: 8px;
+          }
+          
+          .conversation-option {
+            padding: 10px;
+          }
+          
+          .conversation-label strong {
+            font-size: 13px;
+          }
+          
+          .conversation-label small {
+            font-size: 11px;
           }
         }
       `}</style>
