@@ -48,6 +48,13 @@ export default function ProviderDashboard({ provider, onLogout }: ProviderDashbo
           <span className="provider-name">Welcome, {provider.firstName}!</span>
         </div>
         <div className="header-right">
+          <button 
+            onClick={() => window.open(`/provider/${provider.providerId}`, '_blank')}
+            className="calendar-button"
+            title="Open mobile calendar"
+          >
+            📱 Calendar
+          </button>
           <button onClick={onLogout} className="logout-button">
             Sign Out
           </button>
@@ -215,6 +222,31 @@ export default function ProviderDashboard({ provider, onLogout }: ProviderDashbo
         .logout-button:hover {
           background: #c41e3a;
           color: white;
+        }
+
+        .header-right {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+
+        .calendar-button {
+          padding: 8px 16px;
+          background: #28a745;
+          border: 2px solid #28a745;
+          color: white;
+          font-family: 'Oswald', sans-serif;
+          font-size: 14px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border-radius: 4px;
+        }
+
+        .calendar-button:hover {
+          background: #218838;
+          border-color: #218838;
         }
 
         .stats-bar {

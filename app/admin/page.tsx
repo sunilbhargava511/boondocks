@@ -8,7 +8,7 @@ import SimplybookSync from '@/components/SimplybookSync';
 
 interface AdminState {
   isAuthenticated: boolean;
-  activeTab: 'barbers' | 'services' | 'schedule' | 'customers' | 'settings' | 'passwords';
+  activeTab: 'barbers' | 'services' | 'schedule' | 'customers' | 'settings' | 'passwords' | 'calendars';
   providers: Provider[];
   services: Service[];
   businessHours: { [day: string]: { start: string; end: string; isOpen: boolean } };
@@ -941,6 +941,12 @@ export default function AdminPage() {
           Customers
         </button>
         <button
+          className={`tab ${state.activeTab === 'calendars' ? 'active' : ''}`}
+          onClick={() => setState(prev => ({ ...prev, activeTab: 'calendars' }))}
+        >
+          📱 Calendars
+        </button>
+        <button
           className={`tab ${state.activeTab === 'settings' ? 'active' : ''}`}
           onClick={() => setState(prev => ({ ...prev, activeTab: 'settings' }))}
         >
@@ -994,12 +1000,21 @@ export default function AdminPage() {
                         className="name-input"
                         placeholder="Barber Name"
                       />
-                      <button 
-                        onClick={() => deleteProvider(index)}
-                        className="delete-button"
-                      >
-                        Delete
-                      </button>
+                      <div className="header-buttons">
+                        <button 
+                          onClick={() => window.open(`/provider/${provider.id}`, '_blank')}
+                          className="calendar-button"
+                          title="Open mobile calendar"
+                        >
+                          📱 Calendar
+                        </button>
+                        <button 
+                          onClick={() => deleteProvider(index)}
+                          className="delete-button"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                     
                     <textarea
@@ -1282,6 +1297,54 @@ export default function AdminPage() {
               </div>
             )}
 
+            {state.activeTab === 'calendars' && (
+              <div className="calendars-section">
+                <div className="section-header">
+                  <h2>Provider Mobile Calendars</h2>
+                  <p className="section-description">Mobile-optimized calendars for each provider. They can add these to their phone's home screen.</p>
+                </div>
+                
+                <div className="calendar-grid">
+                  {state.providerAccounts && state.providerAccounts.length > 0 ? (
+                    state.providerAccounts.map((account) => (
+                      <div key={account.id} className="calendar-card">
+                        <div className="calendar-header">
+                          <h3>{account.name}</h3>
+                          <p className="calendar-email">{account.email}</p>
+                        </div>
+                        <div className="calendar-actions">
+                          <button
+                            onClick={() => window.open(`/provider/${account.id}`, '_blank')}
+                            className="calendar-link-button"
+                          >
+                            📱 Open Calendar
+                          </button>
+                          <button
+                            onClick={() => {
+                              const url = `${window.location.origin}/provider/${account.id}`;
+                              navigator.clipboard.writeText(url);
+                              setState(prev => ({ ...prev, message: { type: 'success', text: 'Calendar URL copied to clipboard!' } }));
+                              setTimeout(() => setState(prev => ({ ...prev, message: { type: '', text: '' } })), 3000);
+                            }}
+                            className="copy-link-button"
+                          >
+                            🔗 Copy Link
+                          </button>
+                        </div>
+                        <div className="calendar-url">
+                          <small>{window.location.origin}/provider/{account.id}</small>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="no-providers">
+                      <p>No provider accounts found. Sync with Simplybook first.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {state.activeTab === 'settings' && (
               <div className="settings-section">
                 <SimplybookSync />
@@ -1488,6 +1551,28 @@ export default function AdminPage() {
           border-radius: 4px;
           flex: 1;
           margin-right: 10px;
+        }
+
+        .header-buttons {
+          display: flex;
+          gap: 10px;
+        }
+
+        .calendar-button {
+          padding: 8px 12px;
+          background: #4CAF50;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .calendar-button:hover {
+          background: #45a049;
         }
         
         .delete-button {
@@ -2391,6 +2476,102 @@ export default function AdminPage() {
             width: calc(50% - 4px);
             min-width: 85px;
           }
+
+          .calendar-grid {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          }
+
+          .calendar-card {
+            min-width: 250px;
+          }
+        }
+
+        .calendars-section {
+          padding: 20px;
+        }
+
+        .section-description {
+          color: #666;
+          margin-bottom: 30px;
+          font-size: 16px;
+        }
+
+        .calendar-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 20px;
+          margin-top: 20px;
+        }
+
+        .calendar-card {
+          background: white;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          padding: 20px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .calendar-header h3 {
+          margin: 0 0 5px 0;
+          color: #333;
+          font-size: 18px;
+        }
+
+        .calendar-email {
+          margin: 0 0 15px 0;
+          color: #666;
+          font-size: 14px;
+        }
+
+        .calendar-actions {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 15px;
+        }
+
+        .calendar-link-button, .copy-link-button {
+          padding: 10px 16px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .calendar-link-button {
+          background: #4CAF50;
+          color: white;
+        }
+
+        .calendar-link-button:hover {
+          background: #45a049;
+        }
+
+        .copy-link-button {
+          background: #2196F3;
+          color: white;
+        }
+
+        .copy-link-button:hover {
+          background: #1976D2;
+        }
+
+        .calendar-url {
+          padding: 8px;
+          background: #f5f5f5;
+          border-radius: 4px;
+          border: 1px solid #ddd;
+        }
+
+        .calendar-url small {
+          color: #666;
+          word-break: break-all;
+        }
+
+        .no-providers {
+          text-align: center;
+          padding: 40px;
+          color: #666;
         }
       `}</style>
     </div>
