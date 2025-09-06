@@ -137,7 +137,6 @@ export default function ProviderCustomersView({ providerId }: ProviderCustomersV
                   <th>Name</th>
                   <th>Contact</th>
                   <th>Last Visit</th>
-                  <th>Total Spent</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -159,9 +158,6 @@ export default function ProviderCustomersView({ providerId }: ProviderCustomersV
                     </td>
                     <td className="last-visit">
                       {formatLastVisit(customer.lastVisit)}
-                    </td>
-                    <td className="total-spent">
-                      ${customer.totalSpent.toFixed(2)}
                     </td>
                     <td className="status">
                       <span className={`status-badge ${customer.accountStatus}`}>
@@ -236,12 +232,6 @@ export default function ProviderCustomersView({ providerId }: ProviderCustomersV
                   <span className={`status-badge ${selectedCustomer.accountStatus}`}>
                     {selectedCustomer.accountStatus}
                   </span>
-                </div>
-                <div className="detail-row">
-                  <strong>Total Spent:</strong> ${selectedCustomer.totalSpent.toFixed(2)}
-                </div>
-                <div className="detail-row">
-                  <strong>Loyalty Points:</strong> {selectedCustomer.loyaltyPoints}
                 </div>
                 <div className="detail-row">
                   <strong>Last Visit:</strong> {formatLastVisit(selectedCustomer.lastVisit)}

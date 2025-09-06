@@ -383,17 +383,6 @@ export default function CustomerManagement() {
             <option value="blocked">Blocked</option>
           </select>
 
-          <input
-            type="number"
-            placeholder="Min Loyalty Points"
-            value={state.filters.minLoyaltyPoints || ''}
-            onChange={(e) => handleFilter({ 
-              ...state.filters, 
-              minLoyaltyPoints: parseInt(e.target.value) || 0 
-            })}
-            className="filter-input"
-            min="0"
-          />
 
           <input
             type="number"
@@ -442,8 +431,6 @@ export default function CustomerManagement() {
                       <th>Contact</th>
                       <th>Status</th>
                       <th>Last Visit</th>
-                      <th>Total Spent</th>
-                      <th>Loyalty Points</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -469,12 +456,6 @@ export default function CustomerManagement() {
                         </td>
                         <td className="last-visit">
                           {customer.lastVisit ? new Date(customer.lastVisit).toLocaleDateString() : 'Never'}
-                        </td>
-                        <td className="total-spent">
-                          ${customer.totalSpent.toFixed(2)}
-                        </td>
-                        <td className="loyalty-points">
-                          {customer.loyaltyPoints}
                         </td>
                         <td className="actions">
                           <button
@@ -509,8 +490,6 @@ export default function CustomerManagement() {
                     <div className="customer-details">
                       <p><strong>Email:</strong> {customer.email}</p>
                       <p><strong>Phone:</strong> {customer.phone}</p>
-                      <p><strong>Loyalty Points:</strong> {customer.loyaltyPoints}</p>
-                      <p><strong>Total Spent:</strong> ${customer.totalSpent}</p>
                       {customer.noShowCount > 0 && (
                         <p className="warning"><strong>No-Shows:</strong> {customer.noShowCount}</p>
                       )}

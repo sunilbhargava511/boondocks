@@ -316,14 +316,6 @@ export default function CustomerProfile({ customer, onUpdate, onClose }: Custome
               <h3>Customer Metrics</h3>
               <div className="metrics-grid">
                 <div className="metric-card">
-                  <div className="metric-value">{customer.loyaltyPoints}</div>
-                  <div className="metric-label">Loyalty Points</div>
-                </div>
-                <div className="metric-card">
-                  <div className="metric-value">${customer.totalSpent}</div>
-                  <div className="metric-label">Total Spent</div>
-                </div>
-                <div className="metric-card">
                   <div className="metric-value">{customer.noShowCount}</div>
                   <div className="metric-label">No-Shows</div>
                 </div>
