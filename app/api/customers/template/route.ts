@@ -102,11 +102,14 @@ export async function GET() {
     const instructions = [
       '# Customer Import Template',
       '# Fill in your customer data below the sample rows',
-      '# Required fields: First Name, Last Name, Phone',
+      '# Required fields: Phone (all other fields are optional)',
+      '# Deduplication: Customers with same phone will be updated, not duplicated',
+      '# Partial data: You can provide just phone + name, other fields are optional',
       '# Date format: YYYY-MM-DD (e.g., 1985-01-15)',
       '# Conversation Level: 0=Silent, 1=Minimal, 2=Normal, 3=Chatty',
       '# Boolean fields: true/false (Marketing Consent, SMS Consent, Email Consent)',
       '# Multiple values: separate with commas (Preferred Days, Preferred Times, etc.)',
+      '# Phone format: Any format (555-123-4567, 5551234567, etc.)',
       '# Delete these instruction lines before importing',
       ''
     ].join('\n') + csvContent;

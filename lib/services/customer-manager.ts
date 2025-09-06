@@ -813,34 +813,79 @@ export class CustomerManager {
     return { success, failed };
   }
 
-  // CSV Import helper (basic structure - will be expanded in import service)
-  async createCustomerFromCSVRow(row: CSVCustomerRow, importJobId: string): Promise<{ success: boolean; error?: string; customerId?: string }> {
+  // CSV Import helper with deduplication and partial data support
+  async createCustomerFromCSVRow(row: CSVCustomerRow, importJobId: string): Promise<{ success: boolean; error?: string; customerId?: string; action?: 'created' | 'updated' | 'skipped' }> {
     try {
-      // Validate required fields
-      if (!row.phone || !row.firstName || !row.lastName) {
-        return { success: false, error: 'Missing required fields: phone, firstName, or lastName' };
+      // Clean and normalize phone number (remove non-digits except + for country code)
+      const cleanPhone = row.phone?.trim().replace(/[^\d+]/g, '') || '';
+      
+      // Minimal validation - only phone is truly required
+      if (!cleanPhone) {
+        return { success: false, error: 'Missing required field: phone' };
       }
 
-      // Check for existing customer
-      const existing = await this.getCustomerByPhone(row.phone);
+      // Use "Unknown" as default for missing names
+      const firstName = row.firstName?.trim() || 'Unknown';
+      const lastName = row.lastName?.trim() || 'Customer';
+
+      // Check for existing customer by phone
+      const existing = await this.getCustomerByPhone(cleanPhone);
+      
       if (existing) {
-        return { success: false, error: `Customer with phone ${row.phone} already exists` };
+        // Update existing customer with any new information
+        const updateData: UpdateCustomerData = {};
+        
+        // Only update fields that have values in the CSV
+        if (row.firstName?.trim()) updateData.firstName = row.firstName.trim();
+        if (row.lastName?.trim()) updateData.lastName = row.lastName.trim();
+        if (row.email?.trim()) updateData.email = row.email.trim().toLowerCase();
+        if (row.dateOfBirth) updateData.dateOfBirth = new Date(row.dateOfBirth);
+        if (row.conversationPreference) updateData.conversationPreference = parseInt(row.conversationPreference);
+        if (row.preferredProvider) updateData.preferredProviderId = row.preferredProvider;
+        if (row.notes?.trim()) updateData.notes = row.notes.trim();
+        if (row.marketingConsent) updateData.marketingConsent = row.marketingConsent.toLowerCase() === 'true';
+        if (row.smsConsent) updateData.smsConsent = row.smsConsent.toLowerCase() === 'true';
+        if (row.emailConsent) updateData.emailConsent = row.emailConsent.toLowerCase() === 'true';
+        
+        // Update preferences if provided
+        const preferences: Partial<CustomerPreference> = {};
+        if (row.preferredDays) preferences.preferredDays = row.preferredDays.split(',').map(d => d.trim());
+        if (row.preferredTimes) preferences.preferredTimes = row.preferredTimes.split(',').map(t => t.trim());
+        if (row.preferredServices) preferences.preferredServices = row.preferredServices.split(',').map(s => s.trim());
+        if (row.allergiesNotes?.trim()) preferences.allergiesNotes = row.allergiesNotes.trim();
+        if (row.specialInstructions?.trim()) preferences.specialInstructions = row.specialInstructions.trim();
+        
+        if (Object.keys(preferences).length > 0) {
+          updateData.preferences = preferences;
+        }
+        
+        // Update tags if provided
+        if (row.tags) {
+          updateData.tags = row.tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
+        }
+        
+        // Only update if there's something to update
+        if (Object.keys(updateData).length > 0) {
+          await this.updateCustomer(existing.id, updateData);
+          return { success: true, customerId: existing.id, action: 'updated' };
+        } else {
+          return { success: true, customerId: existing.id, action: 'skipped' };
+        }
       }
 
-      // Parse and validate data
+      // Create new customer with available data
       const customerData: CreateCustomerData = {
-        firstName: row.firstName.trim(),
-        lastName: row.lastName.trim(),
-        email: row.email.trim().toLowerCase(),
-        phone: row.phone?.trim() || '',
+        firstName,
+        lastName,
+        email: row.email?.trim().toLowerCase() || `${cleanPhone}@placeholder.com`, // Use placeholder if no email
+        phone: cleanPhone,
         dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : undefined,
         conversationPreference: row.conversationPreference ? parseInt(row.conversationPreference) : 2,
+        preferredProviderId: row.preferredProvider,
         notes: row.notes?.trim(),
         marketingConsent: row.marketingConsent?.toLowerCase() === 'true',
         smsConsent: row.smsConsent?.toLowerCase() === 'true',
-        emailConsent: row.emailConsent?.toLowerCase() !== 'false', // default true
-        loyaltyPoints: row.loyaltyPoints ? parseInt(row.loyaltyPoints) : 0,
-        totalSpent: row.totalSpent ? parseFloat(row.totalSpent) : 0,
+        emailConsent: row.emailConsent ? row.emailConsent.toLowerCase() === 'true' : false, // default false if not specified
         preferences: {
           preferredDays: row.preferredDays ? row.preferredDays.split(',').map(d => d.trim()) : undefined,
           preferredTimes: row.preferredTimes ? row.preferredTimes.split(',').map(t => t.trim()) : undefined,
@@ -853,7 +898,7 @@ export class CustomerManager {
       };
 
       const customer = await this.createCustomer(customerData);
-      return { success: true, customerId: customer.id };
+      return { success: true, customerId: customer.id, action: 'created' };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }

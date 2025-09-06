@@ -605,7 +605,8 @@ export default function CustomerManagement() {
                 <div className="template-info">
                   <small>
                     The template includes sample data and instructions. 
-                    Required fields: First Name, Last Name, Email.
+                    Required field: Phone number only. All other fields are optional.
+                    Duplicate phone numbers will update existing customers.
                   </small>
                 </div>
               </div>

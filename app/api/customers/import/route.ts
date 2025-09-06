@@ -155,6 +155,9 @@ async function processImportJob(
     const errors: string[] = [];
     let successCount = 0;
     let processedRows = 0;
+    let createdCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
 
     for (const [index, rawRow] of rows.entries()) {
       try {
@@ -184,11 +187,14 @@ async function processImportJob(
           tags: mappedRow.tags || mappedRow.Tags,
         };
 
-        // Create customer
+        // Create or update customer
         const result = await customerManager.createCustomerFromCSVRow(customerRow, jobId);
         
         if (result.success) {
           successCount++;
+          if (result.action === 'created') createdCount++;
+          else if (result.action === 'updated') updatedCount++;
+          else if (result.action === 'skipped') skippedCount++;
         } else {
           errors.push(`Row ${index + 1}: ${result.error}`);
         }
@@ -207,6 +213,7 @@ async function processImportJob(
             successCount,
             errorCount: errors.length,
             errors: errors.slice(0, 100), // Limit stored errors
+            results: JSON.stringify({ created: createdCount, updated: updatedCount, skipped: skippedCount }),
           },
         });
       }
@@ -221,6 +228,7 @@ async function processImportJob(
         successCount,
         errorCount: errors.length,
         errors: errors.slice(0, 100),
+        results: JSON.stringify({ created: createdCount, updated: updatedCount, skipped: skippedCount }),
         completedAt: new Date(),
       },
     });
